@@ -1,0 +1,25 @@
+# 依赖（本项目零依赖，无需 node_modules；如未来引入则保留忽略）
+node_modules/
+
+# 运行时本地数据库（SQLite），克隆后由 node server.js 自动播种
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志
+*.log
+/logs/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# WorkBuddy 项目元数据（不入库）
+.workbuddy/
+
+# 环境变量（如未来接入真实模型密钥）
+.env
+.env.local

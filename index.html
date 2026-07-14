@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI智能营销物料审核系统 - 原型</title>
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  background: #f0f2f5;
+  line-height: 1.5715;
+  -webkit-font-smoothing: antialiased;
+}
+/* ===== Layout ===== */
+.app-layout { display: flex; height: 100vh; overflow: hidden; }
+.sidebar {
+  width: 220px;
+  background: #001529;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  gap: 10px;
+}
+.sidebar-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #1677ff, #69b1ff);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center;
+  padding: 10px 24px;
+  color: rgba(255,255,255,.65);
+  cursor: pointer;
+  transition: all .2s;
+  gap: 10px;
+  font-size: 14px;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+.nav-item.active {
+  color: #fff;
+  background: rgba(22,119,255,.25);
+  border-left-color: #1677ff;
+}
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ===== Header ===== */
+.top-header {
+  height: 56px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.header-user {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; color: #555;
+}
+
+/* ===== Page Content ===== */
+.page-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ===== Filter Bar ===== */
+.filter-bar {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label { color: #666; white-space: nowrap; font-size: 13px; }
+.filter-input, .filter-select, .filter-date {
+  height: 32px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 0 11px;
+  font-size: 13px;
+  color: #1a1a1a;
+  outline: none;
+  transition: all .2s;
+  background: #fff;
+  min-width: 160px;
+}
+.filter-input:focus, .filter-select:focus, .filter-date:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22,119,255,.1);
+}
+.filter-select { min-width: 120px; cursor: pointer; }
+.btn {
+  height: 32px;
+  padding: 0 15px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.btn-primary { background: #1677ff; color: #fff; border-color: #1677ff; }
+.btn-primary:hover { background: #4096ff; }
+.btn-default { background: #fff; color: #1a1a1a; border-color: #d9d9d9; }
+.btn-default:hover { border-color: #1677ff; color: #1677ff; }
+.btn-link { background: none; color: #1677ff; border: none; padding: 0 4px; height: auto; }
+.btn-link:hover { color: #4096ff; }
+.btn-danger { background: #fff; color: #ff4d4f; border-color: #ffccc7; }
+.btn-danger:hover { background: #fff1f0; }
+
+/* ===== Card ===== */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  overflow: hidden;
+}
+
+/* ===== Table ===== */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead th {
+  background: #fafafa;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+  border-bottom: 1px solid #e8e8e8;
+  white-space: nowrap;
+  position: sticky; top: 0;
+  z-index: 1;
+}
+.data-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.data-table tbody tr:hover { background: #fafafa; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* ===== Status Badges ===== */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.badge-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.badge-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+.badge-warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+.badge-processing { background: #e6f4ff; color: #1677ff; border: 1px solid #91caff; }
+.badge-info { background: #f0f5ff; color: #2f54eb; border: 1px solid #adc6ff; }
+.badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block; margin-right: 4px;
+}
+.badge-dot-green { background: #52c41a; }
+.badge-dot-red { background: #ff4d4f; }
+.badge-dot-orange { background: #faad14; }
+
+/* ===== Pagination ===== */
+.pagination {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 13px; color: #666;
+}
+.pagination-right { display: flex; align-items: center; gap: 6px; }
+.page-btn {
+  min-width: 30px; height: 30px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; background: #fff;
+  font-size: 13px; color: #1a1a1a;
+  transition: all .2s;
+}
+.page-btn:hover { border-color: #1677ff; color: #1677ff; }
+.page-btn.active { background: #1677ff; color: #fff; border-color: #1677ff; }
+
+/* ===== Modal / Dialog Overlay ===== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 30px rgba(0,0,0,.12);
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  animation: modalIn .25s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(-20px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-close {
+  width: 28px; height: 28px;
+  border: none; background: none;
+  font-size: 18px; cursor: pointer;
+  color: #999; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: #f5f5f5; color: #555; }
+.modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 12px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex; justify-content: flex-end; gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ===== Upload Modal ===== */
+.upload-modal { width: 800px; }
+.upload-tabs {
+  display: flex; border-bottom: 2px solid #f0f0f0; margin-bottom: 20px;
+}
+.upload-tab {
+  padding: 10px 20px; cursor: pointer; font-size: 14px;
+  color: #666; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: all .2s;
+}
+.upload-tab.active { color: #1677ff; border-bottom-color: #1677ff; font-weight: 500; }
+.upload-tab:hover { color: #1677ff; }
+.material-type-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.type-tag {
+  padding: 4px 12px; border: 1px solid #d9d9d9; border-radius: 4px;
+  font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.type-tag.selected { border-color: #1677ff; color: #1677ff; background: #e6f4ff; }
+.upload-area {
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  margin-bottom: 16px;
+  background: #fafafa;
+}
+.upload-area:hover { border-color: #1677ff; background: #e6f4ff; }
+.upload-area-icon { font-size: 48px; color: #bbb; margin-bottom: 12px; }
+.upload-area-text { color: #999; font-size: 14px; }
+.upload-area-hint { color: #bbb; font-size: 12px; margin-top: 6px; }
+
+/* File list table in upload */
+.file-list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.file-list-table th {
+  background: #fafafa; padding: 8px 10px; text-align: left;
+  font-weight: 500; color: #666; border-bottom: 1px solid #e8e8e8;
+}
+.file-list-table td {
+  padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle;
+}
+.file-thumb {
+  width: 48px; height: 48px;
+  object-fit: cover; border-radius: 4px; border: 1px solid #e8e8e8;
+}
+.file-input-sm {
+  height: 28px; border: 1px solid #d9d9d9; border-radius: 4px;
+  padding: 0 8px; font-size: 12px; width: 100%;
+  outline: none;
+}
+.file-input-sm:focus { border-color: #1677ff; }
+
+/* ===== Audit Result Page (Split View) ===== */
+.audit-split { display: flex; gap: 16px; height: calc(100vh - 56px - 40px); }
+.audit-left-panel {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.audit-right-panel {
+  width: 480px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Left panel - material viewer */
+.material-toolbar {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+.material-tabs { display: flex; gap: 4px; }
+.mat-tab {
+  padding: 6px 14px; font-size: 13px; cursor: pointer;
+  border-radius: 4px; color: #666; transition: all .2s;
+}
+.mat-tab.active { background: #e6f4ff; color: #1677ff; font-weight: 500; }
+.mat-tab:hover { color: #1677ff; }
+.material-viewer {
+  flex: 1; overflow: auto;
+  padding: 20px;
+  display: flex; align-items: flex-start; justify-content: center;
+  background: #f5f5f5;
+}
+.material-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+}
+
+/* Right panel - audit results */
+.result-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+.result-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.result-statuses { display: flex; gap: 8px; flex-wrap: wrap; }
+.score-section {
+  background: linear-gradient(135deg, #e6f4ff, #f0f5ff);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.score-main { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.score-number { font-size: 36px; font-weight: 700; color: #1677ff; }
+.score-total { font-size: 16px; color: #999; }
+.score-breakdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.score-item { text-align: center; }
+.score-item-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.score-item-value { font-size: 15px; font-weight: 600; color: #333; }
+.result-filters {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+.result-filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.rfilter-tab {
+  padding: 4px 12px; border-radius: 4px; font-size: 13px;
+  cursor: pointer; border: 1px solid transparent;
+  color: #666; transition: all .2s;
+}
+.rfilter-tab.active { background: #1677ff; color: #fff; }
+.rfilter-tab:not(.active):hover { border-color: #d9d9d9; }
+.result-search-row { display: flex; gap: 8px; align-items: center; }
+.result-search-input {
+  flex: 1; height: 30px; border: 1px solid #d9d9d9; border-radius: 4px;
+  padding: 0 10px; font-size: 12px; outline: none;
+}
+.result-search-input:focus { border-color: #1677ff; }
+.result-checkboxes { display: flex; gap: 12px; font-size: 12px; color: #666; }
+.result-checkboxes label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+.result-list { flex: 1; overflow-y: auto; padding: 8px 16px; }
+.result-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: all .2s;
+}
+.result-card:hover { border-color: #d6e4ff; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.result-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: #fafafa;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+}
+.result-card-body {
+  padding: 12px 14px;
+  font-size: 13px; line-height: 1.7;
+  color: #444;
+  display: none;
+}
+.result-card.expanded .result-card-body { display: block; }
+.rc-tag { font-size: 12px; padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+.rc-tag-text { background: #e6f4ff; color: #1677ff; }
+.rc-tag-compliance { background: #fff7e6; color: #fa8c16; }
+.rc-tag-metric { background: #f6ffed; color: #52c41a; }
+.rc-tag-ai { background: #f9f0ff; color: #722ed1; }
+.rc-detail { font-size: 12px; color: #888; margin-top: 4px; }
+
+/* ===== Rule Library Modal ===== */
+.rule-modal { width: 900px; max-width: 95vw; }
+.rule-layout { display: flex; gap: 0; height: 60vh; }
+.rule-sidebar {
+  width: 180px; border-right: 1px solid #f0f0f0;
+  background: #fafafa; flex-shrink: 0;
+  overflow-y: auto;
+}
+.rule-sidebar-item {
+  padding: 10px 16px; cursor: pointer; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center;
+  color: #555; transition: all .2s;
+}
+.rule-sidebar-item:hover { background: #e6f4ff; color: #1677ff; }
+.rule-sidebar-item.active { background: #e6f4ff; color: #1677ff; font-weight: 500; }
+.rule-sidebar-count { font-size: 11px; color: #999; }
+.rule-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.rule-filters { padding: 16px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+.rule-pills { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.rule-pill {
+  padding: 4px 14px; border-radius: 16px; font-size: 13px;
+  cursor: pointer; border: 1px solid #d9d9d9;
+  color: #555; transition: all .2s; background: #fff;
+}
+.rule-pill.active { background: #1677ff; color: #fff; border-color: #1677ff; }
+.rule-search { display: flex; gap: 8px; }
+.rule-search input {
+  flex: 1; height: 34px; border: 1px solid #d9d9d9; border-radius: 6px;
+  padding: 0 12px; font-size: 13px; outline: none;
+}
+.rule-search input:focus { border-color: #1677ff; }
+.rule-table-wrap { flex: 1; overflow-y: auto; }
+
+/* ===== Misc ===== */
+.link-action { color: #1677ff; cursor: pointer; }
+.link-action:hover { color: #4096ff; text-decoration: underline; }
+.text-muted { color: #999; }
+.text-danger { color: #ff4d4f; }
+.text-success { color: #52c41a; }
+.mt-8 { margin-top: 8px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+
+/* Checkbox */
+input[type="checkbox"] { cursor: pointer; width: 15px; height: 15px; accent-color: #1677ff; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #bbb; }
+
+/* Stat number */
+.stat-num { font-weight: 700; font-family: 'SF Mono', 'Consolas', monospace; }
+
+/* Sub columns in table header */
+.sub-cols { display: flex; gap: 4px; align-items: center; }
+.sub-col { font-size: 12px; color: #999; }
+
+/* Action link group */
+.action-links { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: #bbb;
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Version selector */
+.version-selector {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; background: #f5f5f5; border-radius: 4px;
+  font-size: 13px; color: #666;
+}
+
+/* Material type dots */
+.mt-dots { display: flex; gap: 6px; align-items: center; }
+.mt-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; color: #888;
+}
+.mt-dot::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+}
+.mt-dot.yes::before { background: #52c41a; }
+.mt-dot.no::before { background: #d9d9d9; }
+</style>
+</head>
+<body>
+
+<!-- ==================== APP LAYOUT ==================== -->
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">AI</div>
+      <span>智能审核系统</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="taskList" onclick="switchPage('taskList')">
+        <span class="nav-icon">📋</span> 营销宣传待审列表
+      </div>
+      <div class="nav-item" data-page="auditResult" onclick="switchPage('auditResult')">
+        <span class="nav-icon">🔍</span> 审核结果详情
+      </div>
+      <div class="nav-item" data-page="stats" onclick="switchPage('stats')">
+        <span class="nav-icon">📊</span> 数据统计面板
+      </div>
+      <div class="nav-item" onclick="openRuleModal()">
+        <span class="nav-icon">📖</span> 审核规则库
+      </div>
+    </nav>
+  </div>
+
+  <!-- Main -->
+  <div class="main-content">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-title">营销宣传智能审核</div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="openUploadModal()">+ 上传文件</button>
+        <div class="header-user">
+          <span>👤</span> 豪
+        </div>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <div class="page-content">
+
+      <!-- ============ PAGE 1: Task List ============ -->
+      <div id="page-taskList" class="page active">
+        <div class="card">
+          <div class="filter-bar">
+            <div class="filter-row">
+              <div class="filter-group">
+                <span class="filter-label">任务ID:</span>
+                <input class="filter-input" placeholder="请输入任务ID" style="width:140px;">
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">文件名称:</span>
+                <input class="filter-input" placeholder="请输入文件名" style="width:160px;">
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">任务类型:</span>
+                <select class="filter-select"><option>全部</option><option>文辐审核</option><option>图片审核</option></select>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">材料类型:</span>
+                <select class="filter-select"><option>全部</option><option>宣传推介</option><option>营销材料</option><option>投家材料</option></select>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">创建人:</span>
+                <input class="filter-input" placeholder="请输入创建人姓名" style="width:130px;">
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">审核人:</span>
+                <input class="filter-input" placeholder="请输入审核人姓名" style="width:130px;">
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">复核人:</span>
+                <input class="filter-input" placeholder="请输入复核人姓名" style="width:130px;">
+              </div>
+            </div>
+            <div class="filter-row mt-8">
+              <div class="filter-group">
+                <span class="filter-label">任务状态:</span>
+                <select class="filter-select"><option>全部</option><option>审核完成</option><option>审核异常</option><option>审核待审</option></select>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">上传时间:</span>
+                <input type="date" class="filter-input" value="2025-09-29" style="width:135px;">
+                <span style="color:#999;">—</span>
+                <input type="date" class="filter-input" value="2025-10-13" style="width:135px;">
+              </div>
+              <button class="btn btn-primary">🔍 查询</button>
+              <button class="btn btn-default">🔄 重置</button>
+            </div>
+          </div>
+
+          <!-- Toolbar -->
+          <div style="padding:12px 20px;display:flex;gap:10px;border-bottom:1px solid #f0f0f0;">
+            <button class="btn btn-primary" onclick="openUploadModal()">⬆️ 上传文件</button>
+            <button class="btn btn-default" onclick="openRuleModal()">📋 审核规则库</button>
+          </div>
+
+          <!-- Table -->
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:36px;"><input type="checkbox"></th>
+                <th>任务ID</th>
+                <th>文件名称</th>
+                <th>任务类型</th>
+                <th>材料类型</th>
+                <th colspan="3">审核点</th>
+                <th>创建人</th>
+                <th>制作人</th>
+                <th>审核人</th>
+                <th>复核人</th>
+                <th>产品信息</th>
+                <th>任务状态</th>
+                <th>操作</th>
+              </tr>
+              <tr>
+                <th></th><th></th><th></th><th></th><th></th>
+                <th class="sub-col">总数 ⬇</th><th class="sub-col">不通过 ⬇</th><th class="sub-col">待人工核对 ⬇</th>
+                <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000239</td>
+                <td>文辐审商用测试材料.docx</td>
+                <td>文辐审核</td>
+                <td>宣传推介</td>
+                <td>2</td><td>2</td><td>0</td>
+                <td>若英</td><td></td><td></td><td></td><td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>P000643</td>
+                <td>易方达高速蓬通——页通.jpg</td>
+                <td>图片审核</td>
+                <td>宣传推介</td>
+                <td>75</td><td>5</td><td>61</td>
+                <td>何球软</td><td></td><td></td><td></td>
+                <td>易方达 天弘 理财</td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>P000862</td>
+                <td>易方达高速蓬通—长图.jpg</td>
+                <td>图片审核</td>
+                <td>宣传推介</td>
+                <td>17</td><td>3</td><td>7</td>
+                <td>何球软</td>
+                <td></td><td></td><td></td>
+                <td>易方达 天弘 理财</td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>P000238</td>
+                <td>销报带依现的验证试2.pdf</td>
+                <td>图片审核</td>
+                <td>投家材料</td>
+                <td>4</td><td>3</td><td>2</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000237</td>
+                <td>标点符号错误2.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>3</td><td>0</td><td>3</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000236</td>
+                <td>遗漏重要信息.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>0</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-warning">审核待审 ⏳</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000235</td>
+                <td>涉银带依现的描述试.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>3</td><td>1</td><td>1</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-error">审核异常 ⚠️</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">重新审核</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000234</td>
+                <td>使用非证数数据的风险论.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>6</td><td>2</td><td>2</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000233</td>
+                <td>仅引用过期多年基金评价.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>0</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-processing">审核排期中 📅</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action">重新审核</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000232</td>
+                <td>基金业绩数据错误.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>0</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-processing">审核排期中 📅</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action">重新审核</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000231</td>
+                <td>基金宣传但不实不.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>21</td><td>0</td><td>8</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000230</td>
+                <td>基金评价机构错误.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>0</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000229</td>
+                <td>基础信息遗漏.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>0</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-error">审核异常 ⚠️</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action">重新审核</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000228</td>
+                <td>违规使用词汇_敏感词.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>6</td><td>0</td><td>0</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox"></td>
+                <td>D000227</td>
+                <td>出现错别字.pdf</td>
+                <td>文辐审核</td>
+                <td>营销材料</td>
+                <td>6</td><td>0</td><td>3</td>
+                <td>于亮</td>
+                <td></td><td></td><td></td>
+                <td></td>
+                <td><span class="badge badge-success">审核完成</span></td>
+                <td>
+                  <div class="action-links">
+                    <span class="link-action" onclick="switchPage('auditResult')">查看结果</span>
+                    <span class="link-action">下载结果</span>
+                    <span class="link-action">下载源文件</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>共 47 条数据</span>
+            <div class="pagination-right">
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">3</button>
+              <button class="page-btn">›</button>
+              <button class="page-btn">»</button>
+              <select class="filter-select" style="width:auto;"><option>20条/页</option><option>50条/页</option></select>
+              <span>跳至</span>
+              <input type="number" class="filter-input" style="width:46px;" value="1">
+              <span>页</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE 2: Audit Result Detail (Split View) ============ -->
+      <div id="page-auditResult" class="page" style="overflow:hidden;padding:0;">
+        <div class="audit-split">
+          <!-- LEFT: Material Viewer -->
+          <div class="audit-left-panel">
+            <div class="material-toolbar">
+              <div class="material-tabs">
+                <div class="mat-tab active">上述图片</div>
+                <div class="mat-tab">页面通览</div>
+                <div class="mat-tab">AI解析结果</div>
+                <div class="mat-tab">易方达高速蓬...一页通.md</div>
+              </div>
+              <div style="display:flex;gap:8px;font-size:12px;color:#666;">
+                <span>审核详情：P000843×</span>
+                <span class="link-action" style="font-size:12px;">编辑</span>
+                <span class="link-action" style="font-size:12px;">输出可编辑版</span>
+                <span class="link-action" style="font-size:12px;">显示</span>
+              </div>
+            </div>
+            <div class="material-viewer">
+              <!-- Simulated poster image using CSS/SVG -->
+              <svg viewBox="0 0 420 750" style="max-width:380px;width:100%;background:#fff;border:1px solid #e0e0e0;border-radius:4px;">
+                <!-- Header gradient -->
+                <defs>
+                  <linearGradient id="hdr" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#ff6b35"/>
+                    <stop offset="100%" style="stop-color:#f7931e"/>
+                  </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="420" height="90" fill="url(#hdr)" rx="0"/>
+                <text x="210" y="35" text-anchor="middle" fill="#fff" font-size="22" font-weight="bold">灵活闲钱投资看短债</text>
+                <text x="210" y="62" text-anchor="middle" fill="#fff" font-size="14" opacity=".9">安瑞短债债券C 成立以来业绩突出</text>
+                
+                <!-- Fund info card -->
+                <rect x="20" y="105" width="380" height="70" rx="8" fill="#fff7ed" stroke="#ffd591" stroke-width="1"/>
+                <text x="210" y="130" text-anchor="middle" fill="#333" font-size="13">安瑞短债债券C成立于2018年11月14日。成立以来</text>
+                <text x="210" y="152" text-anchor="middle" fill="#333" font-size="13">表现稳健，闲钱理财投资优选。</text>
+                
+                <!-- Chart title -->
+                <rect x="20" y="190" width="380" height="36" rx="6" fill="#ff6b35"/>
+                <text x="210" y="214" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">易方达安瑞短债债券C</text>
+                <text x="210" y="232" text-anchor="middle" fill="#ffe0cc" font-size="11">历史净值增长率与同期业绩基准对比</text>
+                
+                <!-- Simulated bar chart -->
+                <g transform="translate(45,250)">
+                  <rect x="0" y="80" width="28" height="90" fill="#ff6b35" rx="2"/>
+                  <text x="14" y="175" text-anchor="middle" fill="#666" font-size="9">2024</text>
+                  <text x="14" y="73" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">16.04%</text>
+                  
+                  <rect x="48" y="145" width="28" height="25" fill="#ddd" rx="2"/>
+                  <text x="62" y="175" text-anchor="middle" fill="#666" font-size="9">2023</text>
+                  
+                  <rect x="96" y="148" width="28" height="22" fill="#ddd" rx="2"/>
+                  <text x="110" y="175" text-anchor="middle" fill="#666" font-size="9">2022</text>
+                  
+                  <rect x="144" y="146" width="28" height="24" fill="#ddd" rx="2"/>
+                  <text x="158" y="175" text-anchor="middle" fill="#666" font-size="9">2021</text>
+                  
+                  <rect x="192" y="143" width="28" height="27" fill="#ddd" rx="2"/>
+                  <text x="206" y="175" text-anchor="middle" fill="#666" font-size="9">2020</text>
+                  
+                  <rect x="240" y="150" width="28" height="20" fill="#ff9955" rx="2"/>
+                  <text x="254" y="175" text-anchor="middle" fill="#666" font-size="9">2019</text>
+                  <text x="254" y="143" text-anchor="middle" fill="#fff" font-size="8">3.61%</text>
+                  
+                  <rect x="288" y="155" width="28" height="15" fill="#ff9955" rx="2"/>
+                  <text x="302" y="175" text-anchor="middle" fill="#666" font-size="9">2018</text>
+                  <text x="302" y="148" text-anchor="middle" fill="#fff" font-size="8">3.77%</text>
+                </g>
+                
+                <!-- Legend -->
+                <circle cx="115" cy="270" r="5" fill="#ff6b35"/><text x="125" y="273" fill="#666" font-size="10">易方达安瑞短债债券C</text>
+                <circle cx="260" cy="270" r="5" fill="#ddd"/><text x="270" y="273" fill="#666" font-size="10">业绩基准</text>
+                
+                <!-- Fund info section -->
+                <rect x="20" y="300" width="380" height="42" rx="6" fill="#fff" stroke="#e8e8e8"/>
+                <text x="35" y="320" fill="#333" font-size="14" font-weight="bold">易方达安瑞短债债券C</text>
+                <text x="35" y="336" fill="#ff6b35" font-size="13" font-weight="bold">006320</text>
+                
+                <!-- Data table -->
+                <g transform="translate(20,355)">
+                  <rect width="380" height="95" rx="6" fill="#fff7ed"/>
+                  <text x="10" y="18" fill="#ff6b35" font-size="11" font-weight="bold">概要：产品业绩数据</text>
+                  <line x1="10" y1="26" x2="370" y2="26" stroke="#ffd591" stroke-width="1"/>
+                  <text x="10" y="44" fill="#666" font-size="10">最近可申购起始日</text><text x="110" y="44" fill="#333" font-size="10" font-weight="bold">2024-01-02</text>
+                  <text x="200" y="44" fill="#666" font-size="10">2年收益</text><text x="280" y="44" fill="#333" font-size="10" font-weight="bold">3.01%</text>
+                  <text x="10" y="62" fill="#666" font-size="10">累计单位资产净值(A)</text><text x="110" y="62" fill="#333" font-size="10" font-weight="bold">1.0720</text>
+                  <text x="200" y="62" fill="#666" font-size="10">3年收益</text><text x="280" y="62" fill="#333" font-size="10" font-weight="bold">2.53%</text>
+                  <text x="10" y="80" fill="#666" font-size="10">累计单位资产净值(H)</text><text x="110" y="80" fill="#333" font-size="10" font-weight="bold">1.0413</text>
+                  <text x="200" y="80" fill="#666" font-size="10">成立以来收益</text><text x="290" y="80" fill="#333" font-size="10" font-weight="bold">5.33%</text>
+                </g>
+                
+                <!-- Risk warning -->
+                <rect x="20" y="465" width="380" height="85" rx="6" fill="#fff" stroke="#e8e8e8"/>
+                <text x="30" y="485" fill="#ff6b35" font-size="12" font-weight="bold">风险提示</text>
+                <text x="30" y="503" fill="#666" font-size="9.5">日期范围：2018/11/14 — 2024/9/30</text>
+                <text x="30" y="520" fill="#888" font-size="9">1.本基金为混合型基金其预期收益和预期风险水平低于股票型基金、高于债券型基金与货币型基金...</text>
+                <text x="30" y="536" fill="#888" font-size="9">2.投资者应认真阅读基金合同、招募说明书等法律文件...</text>
+                
+                <!-- Bottom banner -->
+                <rect x="20" y="565" width="380" height="38" rx="6" fill="#ff6b35"/>
+                <text x="210" y="589" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">扫码立即购买 →</text>
+                
+                <!-- Company logo area -->
+                <rect x="0" y="700" width="420" height="50" fill="#f5f5f5"/>
+                <text x="210" y="730" text-anchor="middle" fill="#aaa" font-size="11">易方达基金管理有限公司 | 基金有风险 投资需谨慎</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- RIGHT: Audit Results Panel -->
+          <div class="audit-right-panel">
+            <div class="result-header">
+              <div class="flex-between">
+                <div class="result-title">审核结果概览</div>
+                <div class="result-statuses">
+                  <span class="badge badge-processing">待人工复核 <span class="stat-num">④</span></span>
+                  <span class="badge badge-error">不通过 <span class="stat-num">⑤</span></span>
+                  <span class="badge badge-success">通过 <span class="stat-num">⑥</span></span>
+                </div>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:12px;">
+                <span class="link-action" style="font-size:12px;">传样给</span>
+                <span class="link-action" style="font-size:12px;">📋 审核规则库</span>
+              </div>
+              
+              <!-- Score Section -->
+              <div class="score-section">
+                <div class="score-main">
+                  <span class="score-number stat-num">66</span>
+                  <span class="score-total">/75</span>
+                </div>
+                <div class="score-breakdown">
+                  <div class="score-item">
+                    <div class="score-item-label">文本校对(个)</div>
+                    <div class="score-item-value"><span class="stat-num" style="color:#ff4d4f;">39</span>/48</div>
+                  </div>
+                  <div class="score-item">
+                    <div class="score-item-label">指标校对(个)</div>
+                    <div class="score-item-value"><span class="stat-num" style="color:#52c41a;">22</span>/22</div>
+                  </div>
+                  <div class="score-item">
+                    <div class="score-item-label">合规规则(个)</div>
+                    <div class="score-item-value"><span class="stat-num" style="color:#52c41a;">5</span>/5</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="result-filters">
+              <div class="result-filter-tabs">
+                <div class="rfilter-tab active">全部</div>
+                <div class="rfilter-tab">文本校对</div>
+                <div class="rfilter-tab">指标校对</div>
+                <div class="rfilter-tab">合规规则</div>
+              </div>
+              <div class="result-search-row">
+                <input class="result-search-input" placeholder="检查细则 | 🔍搜索过滤" value="推荐优选">
+                <div class="result-checkboxes">
+                  <label><input type="checkbox" checked> 评论</label>
+                  <label><input type="checkbox"> 人工核对</label>
+                  <label><input type="checkbox"> +人工核对</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Results List -->
+            <div class="result-list">
+              <!-- Item 1: Text check - pending human review -->
+              <div class="result-card expanded">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">1</strong>
+                    <span class="rc-tag rc-tag-text">文本校对</span>
+                    <span class="badge badge-processing">审核结果：待人工核对</span>
+                    <span style="font-size:12px;color:#999;">|</span>
+                    <span class="rc-tag rc-tag-ai">暂无数据源</span>
+                  </div>
+                  <span class="link-action" style="font-size:12px;">人工核对 ›</span>
+                </div>
+                <div class="result-card-body">
+                  <p><b>【正确】</b> 易方达高速蓬通公路封闭式基础设施证券投资基金的代码是<strong style="color:#1677ff;">500833</strong></p>
+                  <p class="mt-8" style="color:#666;">数据核验来源：一贤通</p>
+                  <p class="mt-8 rc-detail">📎 AI模型：<span class="badge badge-info">2025-10-10 16:17:34</span></p>
+                  <p class="mt-8" style="color:#ff4d4f;font-size:12px;">⚠️ 【资金细则】-- 未找到相关校验数据</p>
+                </div>
+              </div>
+
+              <!-- Item 2: Compliance rule - not passed -->
+              <div class="result-card expanded">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">3</strong>
+                    <span class="rc-tag rc-tag-compliance">合规规则</span>
+                    <span class="badge badge-error">审核结果：不通过</span>
+                  </div>
+                  <span class="link-action" style="font-size:12px;">人工核对 ›</span>
+                </div>
+                <div class="result-card-body">
+                  <p><b>问题：</b>基金合同生效不满6个月的产品不得展示业绩信息</p>
+                  <p class="mt-8" style="color:#666;">当前材料展示的基金成立于2025年9月30日（距今不足6个月），但海报中展示了历史业绩图表数据。</p>
+                  <p class="mt-8 rc-detail">📎 AI模型：<span class="badge badge-info">2025-09-30 16:37:34</span></p>
+                  <div class="mt-8" style="background:#fff1f0;padding:8px 12px;border-radius:4px;font-size:12px;color:#cf1322;">
+                    💡 建议修改：删除业绩图表或添加成立满6个月后的提示语
+                  </div>
+                </div>
+              </div>
+
+              <!-- Item 3: AI Label - compliance issue -->
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">4</strong>
+                    <span class="rc-tag rc-tag-ai">AI标签</span>
+                    <span class="badge badge-error">审核结果：--</span>
+                  </div>
+                  <span class="link-action" style="font-size:12px;">人工核对 ›</span>
+                </div>
+                <div class="result-card-body">
+                  <p>文本校对: 数据来源于基金公司2015年6月不满6个月的不清产品展示业绩信息。</p>
+                  <p class="mt-8">文本校对: 截止到某个日期不满6个月不清产品展示业绩信息。...</p>
+                  <p class="mt-8">月、基金合同生效后不满6个月的该不清产品不得展示业绩信息。如...</p>
+                  <p class="mt-8 rc-detail">📎 AI模型：<span class="badge badge-info">2025-09-30 16:37:34</span></p>
+                </div>
+              </div>
+
+              <!-- Item 5: Text check pass -->
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">7</strong>
+                    <span class="rc-tag rc-tag-text">文本校对</span>
+                    <span class="badge badge-success">审核结果：通过</span>
+                  </div>
+                </div>
+                <div class="result-card-body">
+                  <p>✅ 基金全称、简称与备案信息一致</p>
+                  <p class="mt-8 rc-detail">📎 AI模型：<span class="badge badge-info">2025-10-10 16:17:34</span></p>
+                </div>
+              </div>
+
+              <!-- Item 6: Metric check pass -->
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">12</strong>
+                    <span class="rc-tag rc-tag-metric">指标校对</span>
+                    <span class="badge badge-success">审核结果：通过</span>
+                  </div>
+                </div>
+                <div class="result-card-body">
+                  <p>✅ 基金收益率数据与公开数据一致（误差在允许范围内）</p>
+                  <ul style="margin:8px 0 0 18px;font-size:12px;color:#555;">
+                    <li>2024年收益率: 海报 16.04% vs 实际 16.04% ✓</li>
+                <li>成立以来收益率: 海报 5.33% vs 实际 5.33% ✓</li>
+                  </ul>
+                  <p class="mt-8 rc-detail">📎 数据来源：Wind / 基金业协会</p>
+                </div>
+              </div>
+
+              <!-- More items placeholder -->
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">15</strong>
+                    <span class="rc-tag rc-tag-text">文本校对</span>
+                    <span class="badge badge-success">审核结果：通过</span>
+                  </div>
+                </div>
+                <div class="result-card-body">
+                  <p>✅ 风险提示内容完整，包含必要的免责声明</p>
+                </div>
+              </div>
+
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">18</strong>
+                    <span class="rc-tag rc-tag-compliance">合规规则</span>
+                    <span class="badge badge-success">审核结果：通过</span>
+                  </div>
+                </div>
+                <div class="result-card-body">
+                  <p>✅ 不含"保本""稳赚"等绝对化表述</p>
+                </div>
+              </div>
+
+              <div class="result-card">
+                <div class="result-card-header" onclick="toggleCard(this)">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <strong style="font-size:13px;">22</strong>
+                    <span class="rc-tag rc-tag-metric">指标校对</span>
+                    <span class="badge badge-success">审核结果：通过</span>
+                  </div>
+                </div>
+                <div class="result-card-body">
+                  <p>✅ 基金代码 006320 与备案一致</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE 3: Stats Dashboard ============ -->
+      <div id="page-stats" class="page">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;">
+          <div class="card" style="padding:20px;">
+            <div style="color:#888;font-size:13px;margin-bottom:8px;">今日审核总量</div>
+            <div style="font-size:32px;font-weight:700;color:#1677ff;">127</div>
+            <div style="margin-top:8px;font-size:12px;color:#52c41a;">↑ 12.5% 较昨日</div>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div style="color:#888;font-size:13px;margin-bottom:8px;">平均准确率</div>
+            <div style="font-size:32px;font-weight:700;color:#52c41a;">98.5%</div>
+            <div style="margin-top:8px;font-size:12px;color:#52c41a;">↑ 0.3% 较上周</div>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div style="color:#888;font-size:13px;margin-bottom:8px;">人工介入率</div>
+            <div style="font-size:32px;font-weight:700;color:#fa8c16;">8.2%</div>
+            <div style="margin-top:8px;font-size:12px;color:#52c41a;">↓ 1.8% 较上月</div>
+          </div>
+          <div class="card" style="padding:20px;">
+            <div style="color:#888;font-size:13px;margin-bottom:8px;">平均响应时间</div>
+            <div style="font-size:32px;font-weight:700;color:#722ed1;">86ms</div>
+            <div style="margin-top:8px;font-size:12px;color:#52c41a;">↓ 14ms 较上周</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+          <div class="card" style="padding:20px;">
+            <h3 style="font-size:15px;margin-bottom:16px;">近7天审核趋势</h3>
+            <svg viewBox="0 0 600 220" style="width:100%;">
+              <!-- Grid lines -->
+              <line x1="40" y1="20" x2="40" y2="180" stroke="#e8e8e8"/>
+              <line x1="40" y1="180" x2="580" y2="180" stroke="#e8e8e8"/>
+              <line x1="40" y1="50" x2="580" y2="50" stroke="#f0f0f0" stroke-dasharray="4"/>
+              <line x1="40" y1="95" x2="580" y2="95" stroke="#f0f0f0" stroke-dasharray="4"/>
+              <line x1="40" y1="140" x2="580" y2="140" stroke="#f0f0f0" stroke-dasharray="4"/>
+              <!-- Bars -->
+              <rect x="70" y="70" width="50" height="110" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="145" y="55" width="50" height="125" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="220" y="85" width="50" height="95" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="295" y="40" width="50" height="140" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="370" y="60" width="50" height="120" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="445" y="50" width="50" height="130" fill="#1677ff" rx="4" opacity=".8"/>
+              <rect x="520" y="35" width="50" height="145" fill="#1677ff" rx="4" opacity=".8"/>
+              <!-- Labels -->
+              <text x="95" y="198" text-anchor="middle" fill="#888" font-size="11">周一</text>
+              <text x="170" y="198" text-anchor="middle" fill="#888" font-size="11">周二</text>
+              <text x="245" y="198" text-anchor="middle" fill="#888" font-size="11">周三</text>
+              <text x="320" y="198" text-anchor="middle" fill="#888" font-size="11">周四</text>
+              <text x="395" y="198" text-anchor="middle" fill="#888" font-size="11">周五</text>
+              <text x="470" y="198" text-anchor="middle" fill="#888" font-size="11">周六</text>
+              <text x="545" y="198" text-anchor="middle" fill="#888" font-size="11">周日</text>
+              <!-- Values on bars -->
+              <text x="95" y="63" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">89</text>
+              <text x="170" y="48" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">102</text>
+              <text x="245" y="78" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">76</text>
+              <text x="320" y="33" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">115</text>
+              <text x="395" y="53" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">96</text>
+              <text x="470" y="43" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">108</text>
+              <text x="545" y="28" text-anchor="middle" fill="#1677ff" font-size="11" font-weight="600">127</text>
+              <!-- Y axis labels -->
+              <text x="35" y="184" text-anchor="end" fill="#aaa" font-size="10">0</text>
+              <text x="35" y="144" text-anchor="end" fill="#aaa" font-size="10">50</text>
+              <text x="35" y="99" text-anchor="end" fill="#aaa" font-size="10">100</text>
+              <text x="35" y="54" text-anchor="end" fill="#aaa" font-size="10">150</text>
+              <!-- Line overlay (accuracy trend) -->
+              <polyline points="95,110 170,90 245,120 320,75 395,95 470,82 545,68"
+                        fill="none" stroke="#52c41a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="95" cy="110" r="4" fill="#52c41a"/><circle cx="170" cy="90" r="4" fill="#52c41a"/>
+              <circle cx="245" cy="120" r="4" fill="#52c41a"/><circle cx="320" cy="75" r="4" fill="#52c41a"/>
+              <circle cx="395" cy="95" r="4" fill="#52c41a"/><circle cx="470" cy="82" r="4" fill="#52c41a"/>
+              <circle cx="545" cy="68" r="4" fill="#52c41a"/>
+            </svg>
+            <div style="display:flex;justify-content:center;gap:20px;margin-top:12px;font-size:12px;">
+              <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:#1677ff;border-radius:2px;display:inline-block;"></span> 审核数量</span>
+              <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;background:#52c41a;border-radius:2px;display:inline-block;"></span> 准确率趋势</span>
+            </div>
+          </div>
+          <div class="card" style="padding:20px;">
+            <h3 style="font-size:15px;margin-bottom:16px;">审核分类分布</h3>
+            <svg viewBox="0 0 200 200" style="width:200px;height:200px;margin:0 auto;display:block;">
+              <!-- Pie chart -->
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#1677ff" stroke-width="30" stroke-dasharray="251 503" transform="rotate(-90 100 100)"/>
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#52c41a" stroke-width="30" stroke-dasharray="144 503" transform="rotate(99 100 100)"/>
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#faad14" stroke-width="30" stroke-dasharray="79 503" transform="rotate(203 100 100)"/>
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#eee" stroke-width="30" stroke-dasharray="29 503" transform="rotate(292 100 100)"/>
+              <text x="100" y="105" text-anchor="middle" fill="#333" font-size="20" font-weight="700">75项</text>
+              <text x="100" y="122" text-anchor="middle" fill="#999" font-size="11">总检查项</text>
+            </svg>
+            <div style="margin-top:16px;font-size:12px;">
+              <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#1677ff;border-radius:2px;"></span> 文本校对</span>
+                <span class="stat-num">48 (64%)</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#52c41a;border-radius:2px;"></span> 指标校对</span>
+                <span class="stat-num">22 (29%)</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#faad14;border-radius:2px;"></span> 合规规则</span>
+                <span class="stat-num">5 (7%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent badcases -->
+        <div class="card mt-16" style="padding:20px;">
+          <h3 style="font-size:15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+            最近Badcase案例
+            <span class="link-action" style="font-size:13px;">查看全部 →</span>
+          </h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>时间</th><th>任务ID</th><th>问题描述</th><th>类型</th><th>严重程度</th><th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2025-10-13 14:32</td>
+                <td>P000862</td>
+                <td>基金合同生效不满6个月却展示了业绩数据</td>
+                <td><span class="rc-tag rc-tag-compliance">合规规则</span></td>
+                <td><span class="badge badge-error">高</span></td>
+                <td><span class="badge badge-processing">修复中</span></td>
+              </tr>
+              <tr>
+                <td>2025-10-13 11:20</td>
+                <td>P000643</td>
+                <td>"推荐优选"表述可能构成绝对化用语</td>
+                <td><span class="rc-tag rc-tag-text">文本校对</span></td>
+                <td><span class="badge badge-warning">中</span></td>
+                <td><span class="badge badge-success">已修复</span></td>
+              </tr>
+              <tr>
+                <td>2025-10-12 16:45</td>
+                <td>D000235</td>
+                <td>OCR识别将"收益率3.01%"误读为"301%"</td>
+                <td><span class="rc-tag rc-tag-ai">模型幻觉</span></td>
+                <td><span class="badge badge-error">高</span></td>
+                <td><span class="badge badge-processing">优化中</span></td>
+              </tr>
+              <tr>
+                <td>2025-10-12 10:08</td>
+                <td>P000238</td>
+                <td>实体识别漏检了基金成立日期字段</td>
+                <td><span class="rc-tag rc-tag-ai">实体识别</span></td>
+                <td><span class="badge badge-warning">中</span></td>
+                <td><span class="badge badge-success">已修复</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- end page-content -->
+  </div><!-- end main-content -->
+</div><!-- end app-layout -->
+
+<!-- ==================== MODAL: UPLOAD ==================== -->
+<div id="modal-upload" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-upload')">
+  <div class="modal upload-modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">上传文档</span>
+      <button class="modal-close" onclick="closeModal('modal-upload')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:#999;font-size:12px;margin-bottom:16px;">支持上传png,jpeg,jpg，单文件大小10MB以内，限20张</p>
+      
+      <div class="upload-tabs">
+        <div class="upload-tab active" onclick="switchUploadTab(this)">图片审核</div>
+        <div class="upload-tab" onclick="switchUploadTab(this)">文档审核</div>
+      </div>
+
+      <div class="material-type-tags">
+        <div class="type-tag selected" onclick="toggleTypeTag(this)">宣传推介</div>
+        <div class="type-tag" onclick="toggleTypeTag(this)">营销材料</div>
+        <div class="type-tag" onclick="toggleTypeTag(this)">投家材料</div>
+      </div>
+
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-area-icon">📁</div>
+        <div class="upload-area-text">点击选择文件或将文件拖拽到此处</div>
+        <div class="upload-area-hint">支持 png / jpeg / jpg 格式，单文件最大 10MB</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".png,.jpg,.jpeg" style="display:none;" onchange="handleFileSelect(event)">
+
+      <!-- File List Table (shown after files selected) -->
+      <div id="uploadFileList" style="display:none;">
+        <div style="margin-bottom:8px;font-size:13px;font-weight:500;">已选文件 (<span id="fileCount">0</span>)</div>
+        <div style="max-height:240px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:6px;">
+          <table class="file-list-table">
+            <thead>
+              <tr>
+                <th style="width:40px;">序号</th>
+                <th style="width:56px;">文件</th>
+                <th>文件名</th>
+                <th style="width:120px;">产品信息</th>
+                <th style="width:140px;">文件描述</th>
+                <th style="width:100px;">制作人</th>
+                <th style="width:100px;">审核人</th>
+                <th style="width:100px;">复核人</th>
+                <th style="width:50px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="uploadFileBody">
+              <!-- Dynamic rows inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal('modal-upload')">取消</button>
+      <button class="btn btn-primary" onclick="submitUpload()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: RULE LIBRARY ==================== -->
+<div id="modal-rules" class="modal-overlay" onclick="closeModalOnOverlay(event,'modal-rules')">
+  <div class="modal rule-modal" onclick="event.stopPropagation()" style="width:920px;">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="modal-title">审核规则库</span>
+        <div class="version-selector">
+          V3版本 生效日期：2025/8/20 ▾
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-rules')">×</button>
+    </div>
+    <div class="rule-layout">
+      <!-- Left sidebar: material types -->
+      <div class="rule-sidebar">
+        <div class="rule-sidebar-item active" onclick="selectRuleSidebar(this)">
+          全部 <span class="rule-sidebar-count">32条检查项</span>
+        </div>
+        <div class="rule-sidebar-item" onclick="selectRuleSidebar(this)">
+          宣传推介 <span class="rule-sidebar-count">3条检查项</span>
+        </div>
+        <div class="rule-sidebar-item" onclick="selectRuleSidebar(this)">
+          营销材料 <span class="rule-sidebar-count">3条检查项</span>
+        </div>
+        <div class="rule-sidebar-item" onclick="selectRuleSidebar(this)">
+          投家材料 <span class="rule-sidebar-count">3条检查项</span>
+        </div>
+      </div>
+
+      <!-- Main area -->
+      <div class="rule-main">
+        <div class="rule-filters">
+          <div style="margin-bottom:10px;">
+            <span style="font-size:13px;color:#555;margin-right:8px;">全部 <b style="color:#1677ff;">32</b>条</span>
+          </div>
+          <div style="margin-bottom:10px;">
+            <span style="font-size:12px;color:#888;margin-right:8px;">检查项一级分类：</span>
+          </div>
+          <div class="rule-pills">
+            <div class="rule-pill active" onclick="selectRulePill(this)">全部</div>
+            <div class="rule-pill" onclick="selectRulePill(this)">文本校对</div>
+            <div class="rule-pill" onclick="selectRulePill(this)">指标校对</div>
+            <div class="rule-pill" onclick="selectRulePill(this)">合规规则</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <span style="font-size:12px;color:#888;margin-right:8px;">检查项二级分类：</span>
+          </div>
+          <div class="rule-pills">
+            <div class="rule-pill active" onclick="selectRulePill(this)">全部</div>
+          </div>
+          <div class="rule-search">
+            <input placeholder="请输入检查项细则" />
+            <button class="btn btn-primary">查询</button>
+          </div>
+        </div>
+
+        <div class="rule-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">序号</th>
+                <th style="width:100px;">检查项一级分类</th>
+                <th style="width:110px;">检查项二级分类</th>
+                <th>检查项细则</th>
+                <th style="width:140px;">材料类型</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 基金名称/简称与招募说明书不完全一致的信息，出现错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 标的错误指数错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 份股名称错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 份股代码错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 基金代码错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 成立日期错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 经理人姓名/照片错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>文本校对</td>
+                <td>基础信息错误</td>
+                <td>- 基金类型/类别错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>9</td>
+                <td>指标校对</td>
+                <td>基金业绩数据错误</td>
+                <td>- 收益率数据与实际不一致（含区间、年度等）</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>10</td>
+                <td>指标校对</td>
+                <td>规模数据错误</td>
+                <td>- 基金规模数据错误</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>11</td>
+                <td>合规规则</td>
+                <td>出现禁用/限用词</td>
+                <td>- 使用了"保本""稳赚""首选"等绝对化承诺性用语</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>12</td>
+                <td>合规规则</td>
+                <td>数据来源不当</td>
+                <td>- 引用了未经认可的评价机构评级数据</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>13</td>
+                <td>合规规则</td>
+                <td>遗漏重要信息</td>
+                <td>- 未标注"基金有风险 投资需谨慎"</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>14</td>
+                <td>合规规则</td>
+                <td>不当业绩展示</td>
+                <td>- 基金合同生效不满6个月展示业绩信息</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>15</td>
+                <td>合规规则</td>
+                <td>误导性比较</td>
+                <td>- 与非同类基金进行不公平对比</td>
+                <td>
+                  <div class="mt-dots">
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot yes">适用</span><br>
+                    <span class="mt-dot no">未启用</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="pagination" style="border-top:1px solid #f0f0f0;">
+          <span>共 32 条数据</span>
+          <div class="pagination-right">
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">4</button>
+            <button class="page-btn">›</button>
+            <select class="filter-select" style="width:auto;"><option>10条/页</option></select>
+            <span>跳至</span>
+            <input type="number" class="filter-input" style="width:46px;" value="1">
+            <span>页</span>
+          </div>
+        </div>
+        <div style="padding:12px 20px;text-align:right;">
+          <button class="btn btn-default" onclick="closeModal('modal-rules')">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== Page Navigation ==========
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  
+  const page = document.getElementById('page-' + pageId);
+  if (page) page.classList.add('active');
+  
+  const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+  if (navItem) navItem.classList.add('active');
+}
+
+// ========== Modal Controls ==========
+function openUploadModal() {
+  document.getElementById('modal-upload').classList.add('show');
+}
+function openRuleModal() {
+  document.getElementById('modal-rules').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+function closeModalOnOverlay(e, id) {
+  if (e.target === e.currentTarget) closeModal(id);
+}
+
+// ========== Upload Tab Switching ==========
+function switchUploadTab(el) {
+  el.parentElement.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ========== Type Tag Toggle ==========
+function toggleTypeTag(el) {
+  el.classList.toggle('selected');
+}
+
+// ========== File Selection Handler ==========
+const sampleFiles = [
+  { name: '易方达上证180ETF联接新发直播海报(...', thumb: 'poster' },
+  { name: '易方达上证180ETF联接新发直播海报(...', thumb: 'poster' },
+  { name: '安瑞短债债券C.png', thumb: 'fund' },
+  { name: '易方达MSCI美国50ETF——页通.jpg', thumb: 'doc' },
+];
+
+function handleFileSelect(e) {
+  const fileList = document.getElementById('uploadFileList');
+  const fileBody = document.getElementById('uploadFileBody');
+  const countEl = document.getElementById('fileCount');
+  
+  fileBody.innerHTML = '';
+  let idx = 0;
+  
+  // Use sample data or actual files
+  const files = e.target.files.length > 0 ? Array.from(e.target.files) : sampleFiles;
+  
+  files.forEach(file => {
+    idx++;
+    const row = document.createElement('tr');
+    
+    let thumbHtml = '';
+    if (typeof file === 'string' || file.thumb) {
+      const colors = { poster:'#1677ff', fund:'#ff6b35', doc:'#52c41a' };
+      const c = colors[file.thumb] || '#1677ff';
+      thumbHtml = `<div style="width:40px;height:40px;background:${c}15;border:1px solid ${c}30;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">${file.thumb==='poster'?'📄':file.thumb==='fund'?'📊':'📝'}</div>`;
+    } else {
+      thumbHtml = `<img class="file-thumb" src="" alt="">`;
+    }
+    
+    row.innerHTML = `
+      <td>${idx}</td>
+      <td>${thumbHtml}</td>
+      <td>${typeof file === 'string' ? file : file.name}</td>
+      <td><select class="file-input-sm"><option>请选择</option><option>易方达天弘理财</option></select></td>
+      <td><input class="file-input-sm" placeholder="请输入 (0/100)"></td>
+      <td><select class="file-input-sm"><option>请选择</option><option>何球软</option><option>于亮</option></select></td>
+      <td><select class="file-input-sm"><option>请选择</option><option>若英</option></select></td>
+      <td><select class="file-input-sm"><option>请选择</option></select></td>
+      <td><span class="link-action" style="color:#ff4d4f;">删除</span></td>
+    `;
+    fileBody.appendChild(row);
+  });
+  
+  countEl.textContent = idx;
+  fileList.style.display = 'block';
+}
+
+// Auto-populate some demo files on first load
+setTimeout(() => {
+  handleFileSelect({ target: { files: [] } });
+}, 500);
+
+function submitUpload() {
+  alert('✅ 文件已提交审核！\n\n正在调用 AI 多智能体协同审核流程...\n\n预计耗时：30秒 ~ 2分钟\n完成后可在任务列表中查看结果。');
+  closeModal('modal-upload');
+}
+
+// ========== Rule Library Interactions ==========
+function selectRuleSidebar(el) {
+  el.parentElement.querySelectorAll('.rule-sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+}
+function selectRulePill(el) {
+  const pills = el.parentElement.querySelectorAll('.rule-pill');
+  pills.forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ========== Result Card Expand/Collapse ==========
+function toggleCard(header) {
+  header.parentElement.classList.toggle('expanded');
+}
+
+// ========== Filter Tab Click Handlers ==========
+document.querySelectorAll('.rfilter-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    this.parentElement.querySelectorAll('.rfilter-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeModal('modal-upload');
+    closeModal('modal-rules');
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>智审 · AI 智能图片审核系统 — 原型</title>
+<style>
+  :root{
+    --primary:#1677ff; --primary-bg:#e6f4ff;
+    --success:#52c41a; --success-bg:#f6ffed;
+    --warning:#faad14; --warning-bg:#fffbe6;
+    --error:#ff4d4f; --error-bg:#fff2f0;
+    --text:rgba(0,0,0,.88); --text-2:rgba(0,0,0,.65); --text-3:rgba(0,0,0,.45);
+    --border:#d9d9d9; --border-2:#f0f0f0;
+    --bg:#f5f7fa; --white:#fff; --sider:#fff;
+    --radius:8px; --shadow:0 1px 2px rgba(0,0,0,.04),0 2px 8px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--text);background:var(--bg);font-size:14px;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border:1px solid var(--border);background:#fff;border-radius:var(--radius);color:var(--text);font-size:14px;transition:.15s;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-primary:hover{background:#4096ff;border-color:#4096ff;color:#fff;}
+  .btn-sm{height:28px;padding:0 10px;font-size:13px;}
+  .tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:12px;line-height:1;font-weight:500;}
+  .tag-success{background:var(--success-bg);color:var(--success);border:1px solid #b7eb8f;}
+  .tag-warning{background:var(--warning-bg);color:#d48806;border:1px solid #ffe58f;}
+  .tag-error{background:var(--error-bg);color:var(--error);border:1px solid #ffccc7;}
+  .tag-info{background:var(--primary-bg);color:var(--primary);border:1px solid #91caff;}
+  .tag-default{background:#fafafa;color:var(--text-2);border:1px solid var(--border);}
+  .card{background:var(--white);border:1px solid var(--border-2);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .page-title{font-size:20px;font-weight:600;margin:0 0 4px;}
+  .page-sub{color:var(--text-3);font-size:13px;margin:0 0 18px;}
+
+  /* ---------- Login ---------- */
+  #view-login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0b1f3a 0%,#1677ff 100%);}
+  .login-box{width:880px;max-width:94vw;height:520px;background:#fff;border-radius:14px;overflow:hidden;display:flex;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .login-left{flex:1;background:linear-gradient(160deg,#001529,#1677ff);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between;}
+  .login-left h1{font-size:30px;margin:0 0 12px;}
+  .login-left p{color:rgba(255,255,255,.8);line-height:1.9;font-size:14px;}
+  .login-right{flex:1;padding:48px 44px;display:flex;flex-direction:column;justify-content:center;}
+  .login-right h2{font-size:22px;margin:0 0 6px;}
+  .login-right .hint{color:var(--text-3);margin:0 0 24px;font-size:13px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:6px;}
+  .field input{width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;}
+  .field input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(22,119,255,.1);}
+  .seg{display:flex;gap:8px;margin-bottom:20px;}
+  .seg button{flex:1;height:36px;border:1px solid var(--border);background:#fff;border-radius:var(--radius);color:var(--text-2);}
+  .seg button.on{background:var(--primary-bg);border-color:var(--primary);color:var(--primary);font-weight:600;}
+  .scan{border:1px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text-3);}
+  .scan .qr{width:150px;height:150px;margin:10px auto;background:
+    repeating-linear-gradient(0deg,#000 0 8px,#fff 8px 16px),
+    repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 16px);
+    background-blend-mode:multiply;border-radius:6px;}
+  .login-foot{margin-top:16px;font-size:12px;color:var(--text-3);text-align:center;}
+
+  /* ---------- Layout ---------- */
+  #app{display:none;height:100%;}
+  .layout{display:flex;height:100%;}
+  .sider{width:220px;background:var(--sider);border-right:1px solid var(--border-2);display:flex;flex-direction:column;flex-shrink:0;}
+  .logo{height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border-2);font-weight:700;font-size:16px;}
+  .logo .dot{width:26px;height:26px;border-radius:7px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .menu{padding:10px;flex:1;overflow:auto;}
+  .menu-item{display:flex;align-items:center;gap:10px;height:42px;padding:0 14px;border-radius:var(--radius);color:var(--text-2);cursor:pointer;margin-bottom:4px;font-size:14px;}
+  .menu-item:hover{background:#f5f5f5;}
+  .menu-item.active{background:var(--primary-bg);color:var(--primary);font-weight:600;}
+  .menu-item .ic{width:18px;text-align:center;}
+  .sider-foot{padding:14px 20px;border-top:1px solid var(--border-2);font-size:12px;color:var(--text-3);}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{height:56px;background:#fff;border-bottom:1px solid var(--border-2);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0;}
+  .topbar .crumb{color:var(--text-2);font-size:14px;}
+  .topbar .right{display:flex;align-items:center;gap:16px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .content{padding:24px;overflow:auto;flex:1;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- Dashboard ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+  .kpi{padding:18px 20px;}
+  .kpi .label{color:var(--text-3);font-size:13px;}
+  .kpi .val{font-size:28px;font-weight:700;margin:8px 0 4px;}
+  .kpi .delta{font-size:12px;}
+  .up{color:var(--success);} .down{color:var(--error);}
+  .grid-2{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+  .grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .panel{padding:18px 20px;}
+  .panel h3{margin:0 0 14px;font-size:15px;font-weight:600;}
+  .donut{width:160px;height:160px;border-radius:50%;margin:0 auto;background:conic-gradient(#52c41a 0 72%,#ff4d4f 72% 90%,#faad14 90% 100%);position:relative;}
+  .donut::after{content:"";position:absolute;inset:26px;background:#fff;border-radius:50%;}
+  .legend{display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:13px;color:var(--text-2);}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+  .bars{display:flex;flex-direction:column;gap:12px;}
+  .bar-item{display:flex;align-items:center;gap:10px;font-size:13px;}
+  .bar-item .name{width:120px;color:var(--text-2);flex-shrink:0;}
+  .bar-track{flex:1;height:10px;background:#f0f0f0;border-radius:6px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--primary);border-radius:6px;}
+
+  /* ---------- Table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border-2);}
+  th{color:var(--text-3);font-weight:600;background:#fafafa;white-space:nowrap;}
+  tbody tr:hover{background:#fafcff;}
+  .tbl-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .tbl-toolbar input,.tbl-toolbar select{height:34px;border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;outline:none;font-size:13px;}
+  .tbl-toolbar .spacer{flex:1;}
+
+  /* ---------- Review detail ---------- */
+  /* ====== Review Detail — 3-column (image | ocr-md | diff-list) ====== */
+  .review3{display:flex;gap:12px;height:calc(100vh - 180px);min-height:560px;}
+  .r3-left{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:0;}
+  .r3-mid{flex:1;min-width:360px;display:flex;flex-direction:column;}
+  .r3-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;}
+
+  /* left image panel */
+  .img-stage{background:#fff;border:1px solid var(--border-2);border-radius:var(--radius);overflow:auto;display:flex;align-items:center;justify-content:center;flex:1;}
+  .poster{width:100%;min-height:100%;background:linear-gradient(170deg,#fff7e6 0%, #ffe7ba 35%, #ffecd2 70%, #e8f4fd 100%);padding:20px;position:relative;overflow:hidden;}
+  .poster .p-brand{font-size:12px;color:#ad6800;letter-spacing:3px;margin-bottom:6px;}
+  .poster .p-title{font-size:22px;font-weight:900;color:#cf1322;text-align:center;margin:4px 0 2px;}
+  .poster .p-sub{font-size:16px;font-weight:800;color:#b73728;text-align:center;}
+  .poster .p-banner{margin:10px auto 6px;padding:8px 16px;background:linear-gradient(90deg,#d4380d,#fa8c16);color:#fff;border-radius:6px;text-align:center;font-size:13px;font-weight:600;letter-spacing:1px;}
+  .poster .p-card-row{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;}
+  .pcard{flex:1;min-width:140px;background:#fff;border-radius:6px;padding:6px 9px;border:1px solid #ffd591;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .pcard .pn{font-weight:700;font-size:12px;color:#ad6800;}
+  .pcard .pcodes{font-size:10px;color:#8c8c8c;margin-top:2px;}
+  .pcard .pcodes span{background:#ffe7ba;padding:0 4px;border-radius:3px;margin-right:3px;font-family:monospace;}
+  .poster .p-body{font-size:11.5px;color:#595959;line-height:1.85;margin:8px 0;}
+  .poster .p-foot{font-size:10px;color:#bfbfbf;text-align:center;border-top:1px dashed #d4a76a;padding-top:6px;margin-top:8px;}
+
+  /* middle ocr md panel */
+  .ocr-toolbar{height:38px;background:#fafafa;border-bottom:1px solid var(--border-2);display:flex;align-items:center;padding:0 12px;gap:8px;border-radius:var(--radius) var(--radius) 0 0;flex-shrink:0;}
+  .ocr-toolbar .ot-btn{width:24px;height:24px;border:1px solid var(--border-2);border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--text-2);}
+  .ocr-toolbar .ot-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .ocr-toolbar .ot-spacer{flex:1;}
+  .ocr-badge{font-size:12px;padding:2px 8px;border-radius:10px;background:#fff2f0;color:#cf1322;border:1px solid #ffa39e;font-weight:600;}
+  .ocr-body{flex:1;overflow:auto;background:#fff;border:1px solid var(--border-2);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:0;}
+  .ocr-line{display:flex;min-height:24px;border-bottom:1px solid #fafafa;font-size:12.5px;line-height:24px;}
+  .ocr-ln{width:42px;flex-shrink:0;background:#fafafa;text-align:right;padding-right:8px;color:var(--text-3);user-select:none;font-size:11.5px;border-right:1px solid var(--border-2);line-height:24px;}
+  .ocr-text{flex:1;padding:0 10px;white-space:pre-wrap;word-break:break-all;}
+  .ocr-line.hl{background:#fff1f0;}
+  .ocr-line.hl .ocr-text{color:#cf1322;text-decoration:underline;text-decoration-color:rgba(207,19,46,.3);}
+  .ocr-line.warn-hl{background:#fffbe6;}
+  .ocr-line.warn-hl .ocr-text{color:#d48806;}
+  .ocr-footer{height:32px;background:#fafafa;border:1px solid var(--border-2);border-top:none;border-radius:0 0 var(--radius) var(--radius);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11.5px;color:var(--text-3);flex-shrink:0;}
+  .ocr-gutter{position:absolute;left:0;top:0;width:18px;bottom:0;z-index:2;}
+  .gutter-btn{width:16px;height:16px;margin:3px 0 3px 1px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;color:var(--text-3);}
+  .gutter-btn.err-bg{background:var(--error);color:#fff;}
+  .gutter-btn.wrn-bg{background:var(--warning);color:#fff;}
+
+  /* right diff list panel */
+  .diff-header{height:38px;background:#fafafa;border:1px solid var(--border-2);border-radius:var(--radius) var(--radius) 0 0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;flex-shrink:0;font-weight:600;font-size:13px;}
+  .diff-header select{height:26px;border:1px solid var(--border-2);border-radius:4px;font-size:12px;outline:none;}
+  .diff-body{flex:1;overflow-y:auto;background:#fff;border:1px solid var(--border-2);border-top:none;border-bottom:none;}
+  .diff-item{padding:10px 12px;border-bottom:1px solid var(--border-2);cursor:pointer;transition:.1s;}
+  .diff-item:hover{background:#f6ffed;}
+  .diff-item.active{background:var(--primary-bg);}
+  .di-type{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;margin-bottom:6px;}
+  .di-icon{width:16px;height:16px;border-radius:3px;color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;}
+  .di-icon.err-i{background:var(--error);} .di-icon.wr-i{background:var(--warning);} .di-icon.info-i{background:var(--primary);}
+  .di-side{font-size:11.5px;color:var(--text-2);margin-bottom:3px;line-height:1.65;}
+  .di-label{color:var(--text-3);font-size:10.5px;}
+  .di-val{word-break:break-all;}
+  .di-val.del{text-decoration:line-through;color:var(--error);}
+  .di-val.add{text-decoration:underline;color:var(--success);}
+  .diff-footer{height:36px;background:#fff;border:1px solid var(--border-2);border-radius:0 0 var(--radius) var(--radius);display:flex;align-items:center;gap:8px;padding:0 10px;flex-shrink:0;}
+
+  /* ---------- Human review ---------- */
+  .hr-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start;}
+  .queue .q-item{padding:12px 14px;border:1px solid var(--border-2);border-radius:var(--radius);margin-bottom:10px;cursor:pointer;}
+  .queue .q-item:hover{border-color:var(--primary);}
+  .queue .q-item .t{font-weight:600;font-size:13px;}
+  .queue .q-item .m{font-size:12px;color:var(--text-3);margin-top:4px;}
+  .reviewer-box{margin-top:14px;}
+  .reviewer-box textarea{width:100%;min-height:80px;border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;}
+  .reviewer-box textarea:focus{border-color:var(--primary);}
+
+  .rule-tree{width:220px;border-right:1px solid var(--border-2);padding-right:14px;}
+  .rule-tree .node{padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--text-2);font-size:13px;}
+  .rule-tree .node.on{background:var(--primary-bg);color:var(--primary);font-weight:600;}
+  .rule-tree .node .c{color:var(--text-3);font-size:12px;margin-left:4px;}
+  .rule-main{flex:1;padding-left:18px;}
+
+  .metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+  .mcard{padding:16px;text-align:center;}
+  .mcard .v{font-size:26px;font-weight:700;}
+  .mcard .l{color:var(--text-3);font-size:13px;margin-top:4px;}
+  .note{background:var(--primary-bg);border:1px solid #91caff;border-radius:8px;padding:12px 14px;font-size:13px;color:#0958d9;margin-bottom:16px;line-height:1.7;}
+  .pill{font-size:11px;padding:1px 7px;border-radius:10px;background:#f0f0f0;color:var(--text-2);}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="view-login">
+  <div class="login-box">
+    <div class="login-left">
+      <div>
+        <h1>智审 · AI 智能图片审核</h1>
+        <p>面向金融行业的智能营销材料合规审核系统。<br/>多智能体协同，自动识别基金 / 理财宣传材料中的违规风险，降低人工审核成本，提升合规效率。</p>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6)">内部系统 · 仅限授权审核员与合规人员使用</div>
+    </div>
+    <div class="login-right">
+      <h2>登录</h2>
+      <p class="hint">请使用企业账号登录审核管理后台</p>
+      <div class="seg">
+        <button class="on" onclick="switchLogin('acct')">账号登录</button>
+        <button onclick="switchLogin('scan')">扫码登录</button>
+      </div>
+      <div id="login-acct">
+        <div class="field"><label>账号</label><input placeholder="工号 / 邮箱" value="auditor01@fund.com" /></div>
+        <div class="field"><label>密码</label><input type="password" placeholder="请输入密码" value="********" /></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;height:38px" onclick="enter()">进入系统</button>
+      </div>
+      <div id="login-scan" style="display:none">
+        <div class="scan">
+          <div class="qr"></div>
+          微信扫一扫登录<br/>（参考竞品 Calliper 鉴权方式）
+        </div>
+      </div>
+      <div class="login-foot">© 2026 智审 AI · 内部机密</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <div class="layout">
+    <div class="sider">
+      <div class="logo"><span class="dot">审</span> 智审 AI</div>
+      <div class="menu">
+        <div class="menu-item active" onclick="go('dashboard',this)"><span class="ic">▦</span> 工作台</div>
+        <div class="menu-item" onclick="go('tasks',this)"><span class="ic">☰</span> 审核任务</div>
+        <div class="menu-item" onclick="go('review',this)"><span class="ic">🔍</span> 审核详情</div>
+        <div class="menu-item" onclick="go('human',this)"><span class="ic">👤</span> 人工复核</div>
+        <div class="menu-item" onclick="go('rules',this)"><span class="ic">⚖</span> 规则库</div>
+        <div class="menu-item" onclick="go('eval',this)"><span class="ic">📊</span> 评测中心</div>
+      </div>
+      <div class="sider-foot">MVP v0.1 原型<br/>检查项覆盖 32/55 (58%)</div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <div class="crumb" id="crumb">工作台</div>
+        <div class="right">
+          <span class="tag tag-info">在线</span>
+          <span class="avatar">审</span>
+          <span style="font-size:13px;color:var(--text-2)">审核员 · 豪</span>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- ===== Dashboard ===== -->
+        <section class="view active" id="view-dashboard">
+          <h1 class="page-title">工作台</h1>
+          <p class="page-sub">实时审核概览 · 数据更新于 2026-07-13 10:15</p>
+          <div class="kpi-row">
+            <div class="card kpi"><div class="label">今日审核量</div><div class="val">1,284</div><div class="delta up">▲ 12.4% 较昨日</div></div>
+            <div class="card kpi"><div class="label">审核准确率</div><div class="val">98.2%</div><div class="delta up">▲ 0.7% 达标 ≥95%</div></div>
+            <div class="card kpi"><div class="label">人工介入率</div><div class="val">8.6%</div><div class="delta down">▼ 3.1% 目标 ≤20%</div></div>
+            <div class="card kpi"><div class="label">平均响应时间</div><div class="val">96<small style="font-size:14px">ms</small></div><div class="delta up">▲ 优于 ≤500ms</div></div>
+          </div>
+          <div class="grid-2">
+            <div class="card panel">
+              <h3>近 7 天审核量趋势</h3>
+              <svg viewBox="0 0 520 200" style="width:100%;height:200px">
+                <line x1="40" y1="180" x2="500" y2="180" stroke="#f0f0f0"/>
+                <line x1="40" y1="20" x2="500" y2="20" stroke="#f0f0f0"/>
+                <polyline fill="none" stroke="#1677ff" stroke-width="2.5"
+                  points="60,150 140,120 220,135 300,90 380,70 460,55 500,40"/>
+                <polygon fill="rgba(22,119,255,.08)" points="60,150 140,120 220,135 300,90 380,70 460,55 500,40 500,180 60,180"/>
+                <circle cx="60" cy="150" r="3" fill="#1677ff"/><circle cx="140" cy="120" r="3" fill="#1677ff"/>
+                <circle cx="220" cy="135" r="3" fill="#1677ff"/><circle cx="300" cy="90" r="3" fill="#1677ff"/>
+                <circle cx="380" cy="70" r="3" fill="#1677ff"/><circle cx="460" cy="55" r="3" fill="#1677ff"/>
+                <circle cx="500" cy="40" r="3" fill="#1677ff"/>
+                <text x="40" y="197" fill="#8c8c8c" font-size="11">07-07</text>
+                <text x="180" y="197" fill="#8c8c8c" font-size="11">07-09</text>
+                <text x="330" y="197" fill="#8c8c8c" font-size="11">07-11</text>
+                <text x="460" y="197" fill="#8c8c8c" font-size="11">07-13</text>
+              </svg>
+            </div>
+            <div class="card panel">
+              <h3>审核结论分布</h3>
+              <div class="donut"></div>
+              <div class="legend">
+                <span><i style="background:#52c41a"></i>自动通过 72%</span>
+                <span><i style="background:#ff4d4f"></i>自动驳回 18%</span>
+                <span><i style="background:#faad14"></i>转人工 10%</span>
+              </div>
+            </div>
+          </div>
+          <div class="card panel">
+            <h3>各智能体性能达标率（V1 目标）</h3>
+            <div class="bars">
+              <div class="bar-item"><span class="name">OCR 智能体</span><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><span>99%</span></div>
+              <div class="bar-item"><span class="name">多模态解析</span><div class="bar-track"><div class="bar-fill" style="width:95%"></div></div><span>95%</span></div>
+              <div class="bar-item"><span class="name">实体识别</span><div class="bar-track"><div class="bar-fill" style="width:96%"></div></div><span>96%</span></div>
+              <div class="bar-item"><span class="name">数据校验</span><div class="bar-track"><div class="bar-fill" style="width:98%"></div></div><span>98%</span></div>
+              <div class="bar-item"><span class="name">规则审核</span><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><span>99%</span></div>
+              <div class="bar-item"><span class="name">错点解析</span><div class="bar-track"><div class="bar-fill" style="width:90%"></div></div><span>90%</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Tasks ===== -->
+        <section class="view" id="view-tasks">
+          <h1 class="page-title">审核任务</h1>
+          <p class="page-sub">所有提交的材料审核任务与状态</p>
+          <div class="card panel">
+            <div class="tbl-toolbar">
+              <input placeholder="搜索材料名称 / 任务ID" style="width:240px"/>
+              <select><option>全部类型</option><option>宣传海报</option><option>营销文档(DOCX)</option><option>H5 页面</option></select>
+              <select><option>全部状态</option><option>审核中</option><option>自动通过</option><option>自动驳回</option><option>人工复核</option></select>
+              <span class="spacer"></span>
+              <button class="btn btn-primary btn-sm">+ 提交材料</button>
+            </div>
+            <table>
+              <thead><tr><th>任务ID</th><th>材料名称</th><th>类型</th><th>提交人</th><th>提交时间</th><th>AI 结论</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td>T-20260713-001</td><td>稳健收益混合基金宣传海报</td><td>宣传海报</td><td>张敏</td><td>10:02</td><td><span class="tag tag-error">不通过</span></td><td><span class="tag tag-warning">人工复核</span></td><td><a class="btn btn-sm" onclick="go('review',document.querySelector('.menu-item'))">查看</a></td></tr>
+                <tr><td>T-20260713-002</td><td>XX货币基金产品说明书</td><td>营销文档</td><td>李伟</td><td>09:48</td><td><span class="tag tag-success">通过</span></td><td><span class="tag tag-success">自动通过</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>T-20260713-003</td><td>新发基金「安心投」路演 H5</td><td>H5 页面</td><td>王芳</td><td>09:31</td><td><span class="tag tag-error">不通过</span></td><td><span class="tag tag-error">自动驳回</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>T-20260713-004</td><td>养老目标基金投教长图</td><td>宣传海报</td><td>赵磊</td><td>09:15</td><td><span class="tag tag-warning">待确认</span></td><td><span class="tag tag-warning">人工复核</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>T-20260713-005</td><td>债券型基金季度报告封面</td><td>营销文档</td><td>陈静</td><td>08:57</td><td><span class="tag tag-success">通过</span></td><td><span class="tag tag-success">自动通过</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>T-20260713-006</td><td>ETF 联接基金推广短视频</td><td>视频(试点)</td><td>刘洋</td><td>08:40</td><td><span class="tag tag-info">审核中</span></td><td><span class="tag tag-info">审核中</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ===== Review Detail — 3-column ===== -->
+        <section class="view" id="view-review">
+          <h1 class="page-title">审核详情 · T-20260713-001</h1>
+          <p class="page-sub">稳健收益混合基金宣传海报 · 提交人 张敏 · 10:02</p>
+
+          <div class="review3">
+            <!-- ===== LEFT: Image ===== -->
+            <div class="r3-left">
+              <div class="img-stage">
+                <div class="poster" style="height:100%;min-height:540px;">
+                  <!-- top brand -->
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div class="p-brand">XX 基金管理有限公司</div>
+                    <span style="font-size:11px;color:#8c8c8c;background:#fff;padding:2px 6px;border-radius:4px;">海报文稿.png</span>
+                  </div>
+
+                  <!-- title area -->
+                  <div style="text-align:center;margin:14px 0 8px;position:relative;">
+                    <div class="p-banner">周四15:00前买入 元旦假期资金不打烊</div>
+                    <div class="p-title">易方达天天理财货币市场基金</div>
+                    <div class="p-sub">闲钱理财 · 随存随取 · 0 费率</div>
+                  </div>
+
+                  <!-- product cards -->
+                  <div class="p-card-row">
+                    <div class="pcard"><div class="pn">易方达天天理财货币市场基金</div><div class="pcodes"><span>000009</span> <span>0000110</span> <span>051132</span> <span>000011</span></div></div>
+                    <div class="pcard"><div class="pn">易方达天天发货币市场基金</div><div class="pcodes"><span>000839</span> <span>000830</span></div></div>
+                    <div class="pcard"><div class="pn">易方达保证金收益货币市场基金</div><div class="pcodes"><span>159001</span> <span>159002</span></div></div>
+                  </div>
+                  <div class="p-card-row">
+                    <div class="pcard"><div class="pn">易方达财富快线货币市场基金</div><div class="pcodes"><span>000647</span> <span>000648</span> <span>000920</span></div></div>
+                    <div class="pcard"><div class="pn">易方达货币市场基金</div><div class="pcodes"><span>110006</span> <span>110016</span> <span>511800</span></div></div>
+                  </div>
+                  <div class="p-card-row">
+                    <div class="pcard"><div class="pn">易方达龙宝货币市场基金</div><div class="pcodes"><span>007789</span> <span>000790</span> <span>005098</span></div></div>
+                  </div>
+
+                  <!-- body text -->
+                  <div class="p-body">
+                    <strong style="color:#ad6800;">重要提示：风险提示，人眼核不可信</strong><br/>
+                    基金管理人承诺以诚实信用、勤勉尽责的原则管理和运用基金资产，但不保证本基金一定盈利，也不保证最低收益。基金过往业绩及其净值高低并不预示其未来业绩表现。投资者投资于基金时应认真阅读《基金合同》、《招募说明书》等法律文件，了解所投资基金的风险收益特征，并根据自身情况做出投资决策。<br/><br/>
+                    易方达天天理财货币市场基金<br/>
+                    A类：000009 B类：000011 C类：E000033<br/>
+                    本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。<br/>
+                    易方达天天发货币市场基金<br/>
+                    A类：000839 B类：000830<br/>
+                    本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。<br/>
+                    易方达保证金收益货币市场基金<br/>
+                    A类：159001 B类：159002<br/>
+                    本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。<br/>
+                    易方达财富快线货币市场基金<br/>
+                    A类：000647 B类：000648 C类：000920<br/>
+                    本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。<br/>
+                    易方达货币市场基金<br/>
+                    A类：110006 B类：110016 E类：511800<br/>
+                    本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。<br/>
+                    易方达龙宝货币市场基金<br/>
+                    A类：007789 B类：000790 C类：005098<br/>
+                    产品详情请见各基金的《基金合同》、《招募说明书》及法律文件。<br/>
+                    本产品为货币市场基金，主要投资于法律法规及监管机构允许投资的金融工具，包括现金、通知存款、一年以内（含一年）的银行定期存款、大额存单、剩余期限在397天以内（含397天）的债券、央行票据等固定收益类品种。货币市场基金不等同于银行存款，不保证一定盈利，也不保证最低收益。
+                  </div>
+                  <div class="p-foot">严格依照监管部门要求履行信息披露义务 · 代销机构不承担产品的投资、兑付和风险管理义务</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== MIDDLE: OCR MD result ===== -->
+            <div class="r3-mid">
+              <div class="ocr-toolbar">
+                <button class="ot-btn">← 返回</button>
+                <button class="ot-btn">🔍</button>
+                <div class="ot-spacer"></div>
+                <span style="font-size:12px;color:var(--text-3)">所有差异点 </span><b style="color:var(--error);font-size:13px;">7</b>
+                <div class="ot-spacer"></div>
+                <span style="font-size:12px;color:var(--text-3)">3 / 10</span>
+                <button class="ot-btn">🔍</button>
+                <button class="ot-btn">⚙</button>
+                <span class="ocr-badge">37.96%</span>
+                <button class="ot-btn" style="border-color:#91caff;color:var(--primary);">OCR</button>
+              </div>
+              <div class="ocr-body" id="ocr-scroll">
+                <!-- line 1-5 header -->
+                <div class="ocr-line"><span class="ocr-ln">1</span><span class="ocr-text">XX 基金管理有限公司　　　　　　　　　　　　　　<span style="background:#fff;padding:0 4px;border-radius:3px;color:#8c8c8c;font-size:11.5px;">海报文稿.png</span></span></div>
+                <div class="ocr-line"><span class="ocr-ln">2</span><span class="ocr-text"></span></div>
+                <div class="ocr-line hl"><span class="ocr-ln">3</span><span class="ocr-text"><strong style="color:#cf1322;">周四15:00前买入 元旦假期资金不打烊<sup>®</sup></strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">4</span><span class="ocr-text"></span></div>
+                <div class="ocr-line"><span class="ocr-ln">5</span><span class="ocr-text"><strong>易方达天天理财货币市场基金</strong></span></div>
+
+                <!-- line 6-8 subtitle -->
+                <div class="ocr-line warn-hl"><span class="ocr-ln">6</span><span class="ocr-text"><strong style="color:#d48806;">闲钱理财 · 随存随取 · 0 费率</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">7</span><span class="ocr-text"></span></div>
+                <div class="ocr-line"><span class="ocr-ln">8</span><span class="ocr-text"></span></div>
+
+                <!-- line 9-16 product cards -->
+                <div class="ocr-line"><span class="ocr-ln">9</span><span class="ocr-text"><strong>■ 易方达天天理财货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">10</span><span class="ocr-text">A类：<code>000009</code>　B类：<code>0000110</code>　C类：<code>E000033</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">11</span><span class="ocr-text">本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">12</span><span class="ocr-text"></span></div>
+                <div class="ocr-line"><span class="ocr-ln">13</span><span class="ocr-text"><strong>■ 易方达天天发货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">14</span><span class="ocr-text">A类：<code>000839</code>　B类：<code>000830</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">15</span><span class="ocr-text">本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">16</span><span class="ocr-text"></span></div>
+
+                <div class="ocr-line"><span class="ocr-ln">17</span><span class="ocr-text"><strong>■ 易方达保证金收益货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">18</span><span class="ocr-text">A类：<code>159001</code>　B类：<code>159002</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">19</span><span class="ocr-text">本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">20</span><span class="ocr-text"></span></div>
+
+                <!-- risk warning block — highlighted -->
+                <div class="ocr-line hl"><span class="ocr-ln">21</span><span class="ocr-text"><strong style="color:#cf1322;">重要提示：风险提示，人眼核不可信</strong></span></div>
+                <div class="ocr-line hl"><span class="ocr-ln">22</span><span class="ocr-text">基金管理人承诺以诚实信用、勤勉尽责的原则管理和运用基金资产，但不保证本基金一定盈利，也不保证最低收益。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">23</span><span class="ocr-text">基金过往业绩及其净值高低并不预示其未来业绩表现。投资者投资于基金时应认真阅读《基金合同》、</span></div>
+                <div class="ocr-line"><span class="ocr-ln">24</span><span class="ocr-text">《招募说明书》等法律文件，了解所投资基金的风险收益特征，并根据自身情况做出投资决策。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">25</span><span class="ocr-text"></span></div>
+
+                <!-- more products -->
+                <div class="ocr-line"><span class="ocr-ln">26</span><span class="ocr-text"><strong>■ 易方达财富快线货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">27</span><span class="ocr-text">A类：<code>000647</code>　B类：<code>000648</code>　C类：<code>000920</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">28</span><span class="ocr-text">本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">29</span><span class="ocr-text"></span></div>
+
+                <div class="ocr-line"><span class="ocr-ln">30</span><span class="ocr-text"><strong>■ 易方达货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">31</span><span class="ocr-text">A类：<code>110006</code>　B类：<code>110016</code>　E类：<code>511800</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">32</span><span class="ocr-text">本产品由易方达基金管理有限公司发行与管理，代销机构不承担产品的投资、兑付和风险管理责任。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">33</span><span class="ocr-text"></span></div>
+
+                <div class="ocr-line"><span class="ocr-ln">34</span><span class="ocr-text"><strong>■ 易方达龙宝货币市场基金</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">35</span><span class="ocr-text">A类：<code>007789</code>　B类：<code>000790</code>　C类：<code>005098</code></span></div>
+                <div class="ocr-line"><span class="ocr-ln">36</span><span class="ocr-text">产品详情请见各基金的《基金合同》、《招募说明书》及法律文件。</span></div>
+                <div class="ocr-line"><span class="ocr-ln">37</span><span class="ocr-text"></span></div>
+
+                <!-- footer risk text -->
+                <div class="ocr-line warn-hl"><span class="ocr-ln">38</span><span class="ocr-text">本产品为货币市场基金，主要投资于法律法规及监管机构允许投资的金融工具，包括现金、通知存款、</span></div>
+                <div class="ocr-line"><span class="ocr-ln">39</span><span class="ocr-text">一年以内（含一年）的银行定期存款、大额存单、剩余期限在397天以内（含397天）的债券、央行票据</span></div>
+                <div class="ocr-line"><span class="ocr-ln">40</span><span class="ocr-text">等固定收益类品种。<strong style="color:#d48806;">货币市场基金不等同于银行存款，不保证一定盈利，也不保证最低收益。</strong></span></div>
+                <div class="ocr-line"><span class="ocr-ln">41</span><span class="ocr-text"></span></div>
+                <div class="ocr-line"><span class="ocr-ln">42</span><span class="ocr-text"><em style="color:#8c8c8c;">严格依照监管部门要求履行信息披露义务 · 代销机构不承担产品的投资、兑付和风险管理义务</em></span></div>
+              </div>
+              <div class="ocr-footer">
+                <span>海报文稿.docx</span>
+                <span>1 / 2</span>
+              </div>
+            </div>
+
+            <!-- ===== RIGHT: Diff list ===== -->
+            <div class="r3-right">
+              <div class="diff-header">
+                <span>● 差异列表</span>
+                <select><option>全部类型</option><option>文字改动</option><option>段落删除</option><option>合规问题</option></select>
+              </div>
+              <div class="diff-body">
+                <!-- diff 1 -->
+                <div class="diff-item active" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon err-i">✕</span> 段落文字改动</div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val del">周四15:00前买入 元旦假期资金不打烊<sup>®</sup></span></div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val add">建议修改为：「节假日前最后一个交易日」具体日期表述，避免误导</span></div>
+                </div>
+
+                <!-- diff 2 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon wr-i">!</span> 段落文字改动</div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val del">闲钱理财 · 随存随取 · 0 费率</span></div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val add">提取收据注：「0费率」需明确适用条件与例外情形</span></div>
+                </div>
+
+                <!-- diff 3 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon err-i">✕</span> 段落删除</div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val del">重要提示：风险提示，人眼核不可信<br/>基金管理人承诺以诚实信用、勤勉尽责的原则管理和运用基金资产，但不保证本基金一定盈利……</span></div>
+                  <div class="di-side"><span class="di-label">右：</span><span class="di-val" style="color:var(--text-3)">(空)</span></div>
+                  <div class="di-side" style="margin-top:4px;"><span class="di-label" style="color:#d48806;">说明：</span><span style="font-size:11.5px;color:var(--text-2)">「人眼核不可信」措辞不当；应使用法定标准风险提示语句完整版</span></div>
+                </div>
+
+                <!-- diff 4 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon info-i">ℹ</span> 章节级差异</div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val">注意：市场基金主题被贴于货币市场工具，<br/>但该行后续第二个自然日、节假日前后期名义以及收市、节假日最后后一个交易日各类基金已收取认/申购日后当日各个开放日的基金份额申请，<br/>将顺延至下一工作日处理。<br/>特此公告。具体交易安排及风险提示请详见相关公告。<br/>敬请投资者留意。</span></div>
+                  <div class="di-side"><span class="di-label">右：</span><span class="di-val add" style="color:var(--success)">建议补充完整的交易日历与顺延规则说明链接</span></div>
+                </div>
+
+                <!-- diff 5 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon wr-i">!</span> 章节级差号</div>
+                  <div class="di-side"><span class="di-label">左：</span><span class="di-val del">货币市场基金不等同于银行存款，不保证一定盈利，也不保证最低收益。</span></div>
+                  <div class="di-side"><span class="di-label">右：</span><span class="di-val add">应补充：2027年12月28日 具体条款提及及风险时间节点，方法披露备查文件路径指引，并详询客服电话。</span></div>
+                </div>
+
+                <!-- diff 6 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon err-i">✕</span> 合规问题</div>
+                  <div class="di-side"><span class="di-label">位置：</span><span class="di-val">页脚声明</span></div>
+                  <div class="di-side"><span class="di-label">规则：</span><span class="di-val">R-C001 完整风险提示语句校验</span></div>
+                  <div class="di-side"><span class="di-label">描述：</span><span class="di-val">缺少「基金有风险，投资须谨慎」完整法定风险提示语句，且未引用监管法规编号</span></div>
+                </div>
+
+                <!-- diff 7 -->
+                <div class="diff-item" onmouseover="this.classList.add('active')" onmouseout="this.classList.remove('active')">
+                  <div class="di-type"><span class="di-icon wr-i">!</span> 合规问题</div>
+                  <div class="di-side"><span class="di-label">位置：</span><span class="di-val">第 21 行</span></div>
+                  <div class="di-side"><span class="di-label">规则：</span><span class="di-val">R-T001 禁用绝对化用语</span></div>
+                  <div class="di-side"><span class="di-label">描述：</span><span class="di-val">「人眼核不可信」措辞不当，可能引发合规质疑，建议改为标准用语</span></div>
+                </div>
+              </div>
+              <div class="diff-footer">
+                <span class="tag tag-error">AI 结论：不通过</span>
+                <span class="pill">置信度 76%</span>
+                <span class="pill">命中 7 项</span>
+                <div style="flex:1"></div>
+                <button class="btn btn-sm btn-primary">通过</button>
+                <button class="btn btn-sm" style="border-color:var(--error);color:var(--error)">驳回</button>
+                <button class="btn btn-sm" style="border-color:var(--warning);color:#d48806">转人工</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Human Review ===== -->
+        <section class="view" id="view-human">
+          <h1 class="page-title">人工复核工作台</h1>
+          <p class="page-sub">待人工处理的审核任务（置信度&lt;80% / 高风险产品 / 超时 / 异常）</p>
+          <div class="note">⚙ 介入触发规则：① 30 分钟未自动完成 ② 模型置信度 &lt;80% ③ 高风险产品（如新发基金）强制复核 ④ 异常模式（批量相似材料）立即冻结告警。当前队列 23 单，SLA 5 分钟内响应。</div>
+          <div class="hr-wrap">
+            <div class="queue">
+              <div class="q-item"><div class="t">T-20260713-001 稳健收益混合基金海报</div><div class="m"><span class="tag tag-warning">置信度76%</span> 张敏 · 10:02</div></div>
+              <div class="q-item"><div class="t">T-20260713-004 养老目标基金投教长图</div><div class="m"><span class="tag tag-warning">置信度79%</span> 赵磊 · 09:15</div></div>
+              <div class="q-item"><div class="t">T-20260713-007 新发基金「安心投」首发</div><div class="m"><span class="tag tag-error">高风险·强制</span> 王芳 · 09:05</div></div>
+              <div class="q-item"><div class="t">T-20260713-008 批量相似海报 ×12</div><div class="m"><span class="tag tag-error">异常·已冻结</span> 系统 · 08:50</div></div>
+            </div>
+            <div>
+              <div class="card panel">
+                <h3>复核任务 · T-20260713-001</h3>
+                <div class="tbl-toolbar" style="margin-bottom:10px">
+                  <span class="tag tag-error">AI 结论：不通过</span>
+                  <span class="pill">置信度 76%</span>
+                  <span class="pill">命中 7 项</span>
+                </div>
+                <div style="font-size:13px;line-height:1.9;color:var(--text-2)">
+                  <b>AI 原始结论：</b>文本校对命中禁用词 2 处、指标校对缺业绩比较基准、合规规则缺完整风险提示 → 建议驳回。<br/>
+                  <b>复核要点：</b>请确认禁用词判定是否准确，并核实基金代码与名称一致性。
+                </div>
+                <div class="reviewer-box">
+                  <label style="font-size:13px;color:var(--text-2)">复核结论</label>
+                  <div style="display:flex;gap:10px;margin:8px 0">
+                    <button class="btn btn-sm btn-primary">通过（合规）</button>
+                    <button class="btn btn-sm" style="border-color:var(--error);color:var(--error)">驳回（违规）</button>
+                    <button class="btn btn-sm" style="border-color:var(--warning);color:#d48806">返回 AI 重审</button>
+                  </div>
+                  <label style="font-size:13px;color:var(--text-2)">复核意见（将 100% 回流用于增量训练）</label>
+                  <textarea placeholder="填写修正理由，例如：禁用词判定准确，维持驳回；补充标注错点坐标……"></textarea>
+                  <div style="margin-top:10px;text-align:right"><button class="btn btn-primary btn-sm">提交复核</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Rules ===== -->
+        <section class="view" id="view-rules">
+          <h1 class="page-title">规则库</h1>
+          <p class="page-sub">合规规则管理与热更新 · MVP 32 条 / V1 目标 75 条</p>
+          <div class="card panel" style="display:flex">
+            <div class="rule-tree">
+              <div class="node on">全部规则 <span class="c">75</span></div>
+              <div class="node">文本校对 <span class="c">48</span></div>
+              <div class="node">指标校对 <span class="c">22</span></div>
+              <div class="node">合规规则 <span class="c">5</span></div>
+            </div>
+            <div class="rule-main">
+              <div class="tbl-toolbar">
+                <input placeholder="搜索规则名称" style="width:220px"/>
+                <select><option>全部状态</option><option>启用</option><option>停用</option></select>
+                <span class="spacer"></span>
+                <button class="btn btn-primary btn-sm">+ 新增规则</button>
+              </div>
+              <table>
+                <thead><tr><th>规则ID</th><th>规则名称</th><th>类别</th><th>严重级别</th><th>状态</th><th>命中次数</th><th>操作</th></tr></thead>
+                <tbody>
+                  <tr><td>R-T001</td><td>禁用绝对化用语（稳赚/无风险）</td><td>文本校对</td><td><span class="tag tag-error">高</span></td><td><span class="tag tag-success">启用</span></td><td>342</td><td><a class="btn btn-sm">编辑</a></td></tr>
+                  <tr><td>R-T018</td><td>错别字与形近字检测</td><td>文本校对</td><td><span class="tag tag-warning">中</span></td><td><span class="tag tag-success">启用</span></td><td>87</td><td><a class="btn btn-sm">编辑</a></td></tr>
+                  <tr><td>R-I002</td><td>收益率须标注业绩比较基准</td><td>指标校对</td><td><span class="tag tag-warning">中</span></td><td><span class="tag tag-success">启用</span></td><td>156</td><td><a class="btn btn-sm">编辑</a></td></tr>
+                  <tr><td>R-C001</td><td>完整风险提示语句校验</td><td>合规规则</td><td><span class="tag tag-error">高</span></td><td><span class="tag tag-success">启用</span></td><td>203</td><td><a class="btn btn-sm">编辑</a></td></tr>
+                  <tr><td>R-C005</td><td>基金代码-名称一致性</td><td>合规规则</td><td><span class="tag tag-warning">中</span></td><td><span class="tag tag-default">停用</span></td><td>0</td><td><a class="btn btn-sm">启用</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Eval ===== -->
+        <section class="view" id="view-eval">
+          <h1 class="page-title">评测中心</h1>
+          <p class="page-sub">模型性能评测、Badcase / Goodcase 迭代闭环</p>
+          <div class="metric-row">
+            <div class="card mcard"><div class="v" style="color:var(--success)">98.5%</div><div class="l">审核准确率 (V1)</div></div>
+            <div class="card mcard"><div class="v" style="color:var(--warning)">1.5%</div><div class="l">漏检率</div></div>
+            <div class="card mcard"><div class="v" style="color:var(--primary)">100%</div><div class="l">检查项覆盖率</div></div>
+            <div class="card mcard"><div class="v" style="color:var(--error)">3 天</div><div class="l">Badcase 修复周期</div></div>
+          </div>
+          <div class="grid-2b" style="margin-bottom:16px">
+            <div class="card panel">
+              <h3>模型性能对比</h3>
+              <table>
+                <thead><tr><th>模型</th><th>OCR</th><th>多模态</th><th>实体F1</th><th>合规</th><th>耗时</th></tr></thead>
+                <tbody>
+                  <tr><td>Qwen-VL-7B(本地)</td><td>96%</td><td>85%</td><td>92%</td><td>94%</td><td>300ms</td></tr>
+                  <tr style="background:#f6ffed"><td>Qwen-VL-Max(云端)</td><td>99%</td><td>95%</td><td>96%</td><td>98%</td><td>150ms</td></tr>
+                  <tr><td>DeepSeek-V2</td><td>98%</td><td>93%</td><td>95%</td><td>97%</td><td>180ms</td></tr>
+                  <tr><td>GPT-4V</td><td>99%</td><td>96%</td><td>97%</td><td>98.5%</td><td>200ms</td></tr>
+                </tbody>
+              </table>
+              <div style="font-size:12px;color:var(--text-3);margin-top:8px">推荐 V1 采用 Qwen-Max 系列，性价比最优</div>
+            </div>
+            <div class="card panel">
+              <h3>数据回流闭环</h3>
+              <div class="bars" style="margin-top:6px">
+                <div class="bar-item"><span class="name">Badcase 回流</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--error)"></div></div><span>100%</span></div>
+                <div class="bar-item"><span class="name">Goodcase 抽样</span><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><span>20%</span></div>
+                <div class="bar-item"><span class="name">人工修正回流</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--error)"></div></div><span>100%</span></div>
+              </div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:10px;line-height:1.8">Badcase 必标注：问题类型 / 根因 / 修正方案；Goodcase 必标注：场景类型 / 关键特征 / 可泛化性。</div>
+            </div>
+          </div>
+          <div class="card panel">
+            <h3>Badcase / Goodcase 管理</h3>
+            <div class="tbl-toolbar">
+              <select><option>全部类型</option><option>Badcase</option><option>Goodcase</option></select>
+              <select><option>全部状态</option><option>待处理</option><option>已修复</option><option>已沉淀</option></select>
+            </div>
+            <table>
+              <thead><tr><th>案例ID</th><th>类型</th><th>问题类型</th><th>根因</th><th>责任方</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td>BC-205</td><td><span class="tag tag-error">Badcase</span></td><td>数据缺失型</td><td>无数据源校验基金代码</td><td>数据团队</td><td><span class="tag tag-warning">待处理</span></td><td><a class="btn btn-sm">分析</a></td></tr>
+                <tr><td>BC-198</td><td><span class="tag tag-error">Badcase</span></td><td>规则模糊型</td><td>「安心投」是否禁用词待评审</td><td>规则团队</td><td><span class="tag tag-success">已修复</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>GC-077</td><td><span class="tag tag-success">Goodcase</span></td><td>典型场景</td><td>—</td><td>—</td><td><span class="tag tag-info">已沉淀</span></td><td><a class="btn btn-sm">查看</a></td></tr>
+                <tr><td>BC-201</td><td><span class="tag tag-error">Badcase</span></td><td>边缘情况型</td><td>艺术字体识别失败</td><td>数据团队</td><td><span class="tag tag-warning">待处理</span></td><td><a class="btn btn-sm">分析</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function enter(){ document.getElementById('view-login').style.display='none'; document.getElementById('app').style.display='block'; }
+  function switchLogin(t){
+    document.getElementById('login-acct').style.display = t==='acct'?'block':'none';
+    document.getElementById('login-scan').style.display = t==='scan'?'block':'none';
+    document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('on'));
+    event.target.classList.add('on');
+  }
+  function go(view, el){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+view).classList.add('active');
+    document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));
+    if(el && el.classList.contains('menu-item')) el.classList.add('active');
+    else { const map={dashboard:0,tasks:1,review:2,human:3,rules:4,eval:5};
+      document.querySelectorAll('.menu-item')[map[view]].classList.add('active'); }
+    const names={dashboard:'工作台',tasks:'审核任务',review:'审核详情',human:'人工复核',rules:'规则库',eval:'评测中心'};
+    document.getElementById('crumb').textContent = names[view];
+    document.querySelector('.content').scrollTop = 0;
+  }
+</script>
+</body>
+</html>
