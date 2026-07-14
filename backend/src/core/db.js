@@ -25,12 +25,14 @@ function initSchema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       task_no TEXT, filename TEXT, task_type TEXT, material_type TEXT,
       status TEXT, review_status TEXT, creator TEXT, created_at TEXT,
-      confidence REAL, decision TEXT, decision_reason TEXT, handoff INTEGER
+      confidence REAL, decision TEXT, decision_reason TEXT, handoff INTEGER,
+      image_path TEXT
     );
     CREATE TABLE IF NOT EXISTS review_results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       task_id INTEGER, anno_boxes_json TEXT, cards_json TEXT,
-      confidence REAL, conclusion TEXT, ocr_text TEXT, agent_outputs_json TEXT
+      confidence REAL, conclusion TEXT, ocr_text TEXT, agent_outputs_json TEXT,
+      mock INTEGER
     );
     CREATE TABLE IF NOT EXISTS decisions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,10 +84,10 @@ function run(sql, params = []) {
 }
 function reset() {
   const db = getDb();
+  // 用 DROP 而非 DELETE：确保 --force 重新播种时按「当前 schema」重建表，
+  // 否则旧表缺列（如后来加的 image_path / mock）会导致 INSERT 失败。
   ['tasks', 'review_results', 'decisions', 'rules', 'agents', 'roles', 'users', 'knowledge', 'evals', 'config_kv']
-    .forEach((t) => db.exec(`DELETE FROM ${t}`));
-  // DELETE 不会重置 AUTOINCREMENT 计数，--force 重新播种需让 id 从 1 开始，保证可复现
-  db.exec(`DELETE FROM sqlite_sequence WHERE name IN ('tasks','review_results','decisions','rules','agents','roles','users','knowledge','evals','config_kv')`);
+    .forEach((t) => { try { db.exec(`DROP TABLE IF EXISTS ${t}`); } catch (e) {} });
 }
 
 module.exports = { initSchema, get, all, run, reset, getDb };

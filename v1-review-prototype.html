@@ -673,7 +673,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
   <div class="filter-item"><label>状态</label><select class="filter-select"><option selected>全部</option><option>审核成功</option><option>审核异常</option><option>审核中</option></select></div>
   <div class="filter-actions">
     <button class="btn btn-primary-sm" onclick="openUploadModal()">＋ 上传材料</button>
-    <button class="btn btn-primary-sm">查询</button>
+    <button class="btn btn-primary-sm" onclick="doTaskSearch()">查询</button>
     <button class="btn">重置</button>
   </div>
 </div>
@@ -1238,7 +1238,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
     <div class="filter-bar">
       <div class="filter-item"><label>版本</label><select class="filter-select" onchange="filterRules()"><option selected>V3 版本（生效 2025/8/20）</option><option>V2 版本</option><option>V1 版本</option></select></div>
       <div class="filter-item"><label>一级分类</label><select class="filter-select" onchange="filterRules()"><option selected>全部</option><option>文本校对 (48)</option><option>指标校对 (22)</option><option>合规规则 (5)</option></select></div>
-      <div class="filter-item"><label>搜索</label><input class="filter-input" placeholder="检查项细则搜索..." style="width:200px;" oninput="filterRules()"></div>
+      <div class="filter-item"><label>搜索</label><input id="ruleKwInput" class="filter-input" placeholder="检查项细则搜索..." style="width:200px;" oninput="doRuleSearch()"></div>
       <div class="filter-actions"><button class="btn btn-primary-sm" onclick="openRuleAdd()">＋ 新增规则</button></div>
     </div>
     <div class="data-table">
@@ -1276,6 +1276,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
   <div style="flex:1;">
     <div class="filter-bar">
       <div class="filter-item"><label>生效状态</label><select class="filter-select"><option selected>全部</option><option>已生效</option><option>已废弃</option><option>草稿</option></select></div>
+      <div class="filter-item"><label>搜索</label><input id="kwInput" class="filter-input" placeholder="知识条目 / 内容搜索..." style="width:220px;" oninput="doKnowledgeSearch()"></div>
       <div class="filter-actions"><button class="btn btn-primary-sm">＋ 添加知识源</button><button class="btn">规则评审</button></div>
     </div>
     <div class="data-table">
@@ -1652,7 +1653,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
     <div class="form-item" style="margin-top:16px;"><label class="form-label">产品信息</label><select class="form-input" style="height:38px;"><option>请选择关联产品</option><option selected>基金定投A类</option><option>理财稳健型</option><option>养老FOF系列</option></select></div>
     <div class="form-row"><div class="form-field"><label class="form-label">指定制作人</label><select class="form-input" style="height:38px;"><option>自动分配</option><option selected>李晓华</option><option>陈思雨</option></select></div><div class="form-field"><label class="form-label">指定审核人</label><select class="form-input" style="height:38px;"><option>自动分配</option><option selected>张明远</option><option>赵敏</option></select></div></div>
   </div>
-  <div class="modal-footer"><button class="btn" onclick="closeUploadModal()">取消</button><button class="btn btn-primary-sm" onclick="closeUploadModal();alert('已提交审核！');">确认上传</button></div>
+  <div class="modal-footer"><button class="btn" onclick="closeUploadModal()">取消</button><button class="btn btn-primary-sm" onclick="doRealUploadClick()">确认上传</button></div>
 </div>
 </div>
 
@@ -2247,6 +2248,7 @@ function statusBadge(s) {
 
 /* ---------- 页面分发 ---------- */
 function loadPage(pageKey) {
+  ensureLlmBanner();
   switch (pageKey) {
     case 'dashboard': loadDashboard(); break;
     case 'task-list': loadTaskList(); break;
@@ -2336,9 +2338,24 @@ async function loadDashboard() {
 }
 
 /* ---------- 审核任务列表 ---------- */
-async function loadTaskList() {
+function doTaskSearch() {
+  const box = document.querySelector('#pageContent');
+  if (!box) return;
+  const inputs = box.querySelectorAll('.filter-input');
+  const id = ((inputs[0] && inputs[0].value) || '').trim();
+  const name = ((inputs[1] && inputs[1].value) || '').trim();
+  loadTaskList({ task_no: id, keyword: name });
+}
+async function loadTaskList(params) {
   try {
-    const tasks = await api('/tasks');
+    let q = '';
+    if (params) {
+      const us = [];
+      if (params.task_no) us.push('task_no=' + encodeURIComponent(params.task_no));
+      if (params.keyword) us.push('keyword=' + encodeURIComponent(params.keyword));
+      if (us.length) q = '?' + us.join('&');
+    }
+    const tasks = await api('/tasks' + q);
     if (!tasks) return;
     const details = await Promise.all(tasks.map(function (t) {
       return api('/tasks/' + encodeURIComponent(t.task_no)).catch(function () { return null; });
@@ -2408,6 +2425,8 @@ async function loadReviewDetail() {
     if (st) { st.className = 'badge ' + statusBadge(t.review_status); st.innerHTML = '<i class="badge-dot"></i>' + esc(t.review_status); }
     const imgName = document.querySelector('#pageContent .image-filename');
     if (imgName) imgName.textContent = t.filename;
+    const posterImg = document.getElementById('posterImg');
+    if (posterImg && t.image_url) posterImg.src = t.image_url;
     const cards = (t.result && t.result.cards) || [];
     const conf = (t.result && t.result.confidence != null) ? t.result.confidence : t.confidence;
     const ov = document.querySelector('#pageContent .result-overview .op-val');
@@ -2445,9 +2464,15 @@ async function rerunTask() {
 }
 
 /* ---------- 规则库 ---------- */
-async function loadRules() {
+function doRuleSearch() {
+  const inp = document.getElementById('ruleKwInput');
+  if (inp) loadRules({ keyword: inp.value.trim() });
+}
+async function loadRules(params) {
   try {
-    const rules = await api('/rules');
+    let q = '';
+    if (params && params.keyword) q = '?keyword=' + encodeURIComponent(params.keyword);
+    const rules = await api('/rules' + q);
     if (!rules) return;
     const tb = document.querySelector('#pageContent .data-table tbody');
     if (!tb) return;
@@ -2484,9 +2509,15 @@ async function persistRule(tr, data) {
 }
 
 /* ---------- 知识库 ---------- */
-async function loadKnowledge() {
+function doKnowledgeSearch() {
+  const inp = document.getElementById('kwInput');
+  if (inp) loadKnowledge({ keyword: inp.value.trim() });
+}
+async function loadKnowledge(params) {
   try {
-    const ks = await api('/knowledge');
+    let q = '';
+    if (params && params.keyword) q = '?keyword=' + encodeURIComponent(params.keyword);
+    const ks = await api('/knowledge' + q);
     if (!ks) return;
     const tb = document.querySelector('#pageContent .data-table tbody');
     if (!tb) return;
@@ -2589,6 +2620,63 @@ async function loadEvals() {
       tb.appendChild(tr);
     });
   } catch (e) { console.warn('[联调] 评测中心加载失败（保留静态内容）：', e); }
+}
+
+/* ---------- 大模型状态横幅 + 真实上传 ---------- */
+let _llmChecked = false;
+async function ensureLlmBanner() {
+  const banner = document.getElementById('llmBanner');
+  if (!banner || _llmChecked) return;
+  _llmChecked = true;
+  try {
+    const c = await api('/config/llm');
+    if (!c.configured) {
+      banner.style.display = 'block';
+      banner.innerHTML = '⚠️ 当前<b>未配置大模型 API Key</b>，审核结果为「模拟（启发式）」。在 <code>backend/.env</code> 填入 DASHSCOPE_API_KEY 后刷新，即切换为<b>真实调用</b>通义千问。';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch (e) { /* 忽略 */ }
+}
+const _uploadCreator = { uploader: '李晓华', reviewer: '张明远', admin: '钱进' };
+function ensureRealFileInput() {
+  let f = document.getElementById('realFileInput');
+  if (!f) {
+    f = document.createElement('input');
+    f.type = 'file'; f.id = 'realFileInput'; f.accept = 'image/*'; f.style.display = 'none';
+    f.addEventListener('change', function () { doRealUpload(); });
+    document.body.appendChild(f);
+  }
+  return f;
+}
+function fileToBase64(file) {
+  return new Promise(function (resolve, reject) {
+    const r = new FileReader();
+    r.onload = function () { resolve(String(r.result).split(',')[1] || ''); };
+    r.onerror = function () { reject(new Error('文件读取失败')); };
+    r.readAsDataURL(file);
+  });
+}
+async function doRealUpload() {
+  const f = ensureRealFileInput();
+  if (!f.files || !f.files.length) return;
+  const file = f.files[0];
+  try {
+    const b64 = await fileToBase64(file);
+    const r = await api('/tasks/upload', { method: 'POST', body: {
+      filename: file.name, image_base64: b64, image_mime: file.type || 'image/jpeg',
+      task_type: '图片审核', material_type: '宣传推介',
+      creator: _uploadCreator[currentRole] || '上传方'
+    } });
+    closeUploadModal();
+    if (r && r.task_no) { currentTaskId = r.task_no; navigateTo('review-detail'); }
+  } catch (e) { alert('上传失败：' + (e.message || e)); }
+  f.value = '';
+}
+function doRealUploadClick() {
+  const f = ensureRealFileInput();
+  if (!f.files || !f.files.length) { f.click(); return; }
+  doRealUpload();
 }
 
 console.log('[联调] 前后端联调层已加载，数据来源：/api');

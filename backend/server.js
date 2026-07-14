@@ -6,6 +6,7 @@
  */
 const http = require('http');
 const path = require('path');
+const { loadEnv } = require('./src/core/env');
 const { initSchema, getDb } = require('./src/core/db');
 const { serveStatic } = require('./src/core/http');
 const Router = require('./src/core/router');
@@ -16,6 +17,7 @@ const ROOT = path.join(__dirname, '..'); // AI图片审核系统原型/（backen
 const PROTOTYPE = 'v1-review-prototype.html';
 const PORT = process.env.PORT || 3000;
 
+loadEnv();
 initSchema();
 seed();
 

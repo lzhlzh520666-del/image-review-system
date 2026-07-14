@@ -7,6 +7,9 @@ data/
 *.sqlite
 *.sqlite3
 
+# 用户上传的图片（运行时生成，不入库）
+backend/uploads/
+
 # 日志
 *.log
 /logs/

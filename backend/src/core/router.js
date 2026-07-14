@@ -24,7 +24,14 @@ Router.prototype.handle = async function (req, res, ctx) {
     if (!m) continue;
     const params = {};
     r.keys.forEach((k, i) => { params[k] = decodeURIComponent(m[i + 1]); });
-    const query = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
+    let query = {};
+    try { query = Object.fromEntries(new URL(req.url, 'http://x').searchParams); }
+    catch (e) {
+      // 极少数编码异常时退化为手动解析，避免整请求崩
+      query = {};
+      const qs = (req.url.split('?')[1] || '').split('&');
+      qs.forEach((kv) => { const i = kv.indexOf('='); if (i < 0) return; try { query[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1)); } catch {} });
+    }
     let body = {};
     if (req.method === 'POST' || req.method === 'PUT') body = await readBody(req);
     return r.handler(req, res, { ...ctx, params, query, body });

@@ -13,6 +13,7 @@ const dashboardService = require('../services/dashboardService');
 const knowledgeService = require('../services/knowledgeService');
 const evalService = require('../services/evalService');
 const taskService = require('../services/taskService');
+const llm = require('../core/llm');
 
 /* 统一出站：service 返回 null 视作 404，返回 {error} 视作 400。 */
 function ok(res, data, status = 200) { json(res, status, data); }
@@ -45,8 +46,13 @@ module.exports = function register(router) {
     if (!t) return fail(res, 404, '任务不存在：' + params.id);
     ok(res, t);
   });
-  router.post('/api/tasks', (req, res, { body }) => {
-    const t = taskService.create(body);
+  router.post('/api/tasks', async (req, res, { body }) => {
+    const t = await taskService.create(body);
+    if (t && t.error) return fail(res, 400, t.error);
+    ok(res, t, 201);
+  });
+  router.post('/api/tasks/upload', async (req, res, { body }) => {
+    const t = await taskService.create(body);
     if (t && t.error) return fail(res, 400, t.error);
     ok(res, t, 201);
   });
@@ -56,8 +62,8 @@ module.exports = function register(router) {
     if (r.error) return fail(res, 400, r.error);
     ok(res, r);
   });
-  router.post('/api/tasks/:id/rerun', (req, res, { params }) => {
-    const t = taskService.rerun(params.id);
+  router.post('/api/tasks/:id/rerun', async (req, res, { params }) => {
+    const t = await taskService.rerun(params.id);
     if (!t) return fail(res, 404, '任务不存在：' + params.id);
     ok(res, t);
   });
@@ -81,6 +87,11 @@ module.exports = function register(router) {
   });
 
   /* ---------- 模型与智能体配置 ---------- */
+  router.get('/api/config/llm', (req, res) => ok(res, {
+    configured: llm.configured(),
+    text_model: llm.TEXT_MODEL(),
+    vl_model: llm.VL_MODEL()
+  }));
   router.get('/api/config/agents', (req, res) => ok(res, configService.listAgents()));
   router.put('/api/config/agents/:key', (req, res, { params, body }) => {
     const r = configService.updateAgent(params.key, body);

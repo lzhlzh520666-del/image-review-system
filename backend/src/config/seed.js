@@ -6,7 +6,12 @@
  *      node src/config/seed.js --force  (清空后重建)
  */
 const db = require('../core/db');
+const fs = require('fs');
+const path = require('path');
 const { run, get, all, reset } = db;
+
+const PROJECT_ROOT = path.join(__dirname, '..', '..'); // AI图片审核系统原型/
+const UPLOAD_DIR = path.join(PROJECT_ROOT, 'backend', 'uploads');
 
 const p2 = (n) => String(n).padStart(2, '0');
 function ts(d = new Date()) {
@@ -106,6 +111,7 @@ const EVALS = [
 /* ============== 播种 ============== */
 function seed(force = false) {
   if (force) reset();
+  db.initSchema(); // reset 已 DROP 旧表，此处按最新 schema 重建
 
   if (!get('SELECT COUNT(*) c FROM agents').c) {
     AGENTS.forEach(a => run(
