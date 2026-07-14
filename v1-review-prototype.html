@@ -1783,6 +1783,8 @@ function navigateTo(pageKey) {
 
   // 审核详情页：初始化缩放 / 多页 / 映射连线
   if (pageKey === 'review-detail') setupReviewDetail();
+  // ═ 联调：渲染后从 /api 拉取真实数据覆盖
+  try { loadPage(pageKey); } catch (e) { console.warn('loadPage failed', e); }
 }
 
 function openUploadModal() {
@@ -1856,6 +1858,7 @@ function saveRule() {
     renumberRules();
   }
   filterRules();          // 保持与当前筛选条件一致
+  persistRule(ruleEditTarget, { level1: level1, level2: level2, detail: detail, material: material });
   closeRuleModal();
 }
 
@@ -1870,7 +1873,8 @@ function toggleRuleStatus(btn) {
   if (!tr) return;
   const badgeTd = tr.children[5];
   const actionTd = tr.children[6];
-  if (tr.getAttribute('data-status') === 'on') {
+  const wasOn = tr.getAttribute('data-status') === 'on';
+  if (wasOn) {
     tr.setAttribute('data-status', 'off');
     badgeTd.innerHTML = '<span class="badge badge-danger">禁用</span>';
     actionTd.innerHTML = '<a class="link-action" onclick="openRuleEdit(this)">编辑</a><a class="link-action" onclick="toggleRuleStatus(this)">启用</a>';
@@ -1878,6 +1882,10 @@ function toggleRuleStatus(btn) {
     tr.setAttribute('data-status', 'on');
     badgeTd.innerHTML = '<span class="badge badge-success">启用</span>';
     actionTd.innerHTML = '<a class="link-action" onclick="openRuleEdit(this)">编辑</a><a class="link-action" onclick="toggleRuleStatus(this)">禁用</a>';
+  }
+  const id = tr.getAttribute('data-id');
+  if (id && /^\d+$/.test(id)) {
+    api('/rules/' + id + '/toggle', { method: 'POST' }).catch(function (e) { console.warn('[联调] 规则启停同步失败', e); });
   }
 }
 
@@ -2183,14 +2191,407 @@ function toggleAgentStatus(btn, badgeId){
   const b = document.getElementById(badgeId);
   if(!b) return;
   const on = b.classList.contains('badge-success');
+  const next = !on;
   if(on){ b.classList.remove('badge-success'); b.classList.add('badge-danger'); b.textContent='禁用'; btn.textContent='启用'; }
   else   { b.classList.remove('badge-danger'); b.classList.add('badge-success'); b.textContent='启用'; btn.textContent='禁用'; }
+  const m = /badge-ag(\d+)/.exec(badgeId || '');
+  if (m && window._agentKeys) {
+    const key = window._agentKeys[+m[1] - 1];
+    if (key) {
+      api('/config/agents/' + key, { method:'PUT', body:{ enabled: next ? 1 : 0 } })
+        .catch(function (e) { console.warn('[联调] 智能体启停同步失败', e); });
+    }
+  }
 }
 function updateSlider(slider){
   const f = slider.closest('.form-field');
   const v = f && f.querySelector('.thr-val');
   if(v) v.textContent = slider.value + '%';
 }
+</script>
+<script>
+/* ══════════════════════════════════════════════════
+   前后端联调层 —— 真实调用后端 /api（不改动任何原有字段/列/按钮）
+   访问方式：经后端托管 http://localhost:3000/v1-review-prototype.html
+   （file:// 直接打开会因同源策略无法 fetch /api，请用上面的地址）
+   ══════════════════════════════════════════════════ */
+'use strict';
+const PRODUCT_MAP = { P000843:'易方达安瑞短债C类', P000842:'理财稳健型', P000839:'养老FOF系列', P000835:'投教专栏', P000834:'季度营销' };
+let currentTaskId = 'P000843';
+window._agentKeys = [];
+
+/* ---------- 通用 API 客户端 ---------- */
+async function api(path, opts) {
+  opts = opts || {};
+  const res = await fetch('/api' + path, {
+    method: opts.method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+  return data;
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+function statusBadge(s) {
+  if (s === '审核成功' || s === '通过' || s === '已生效' || s === '启用') return 'badge-success';
+  if (s === '不通过' || s === '审核异常') return 'badge-danger';
+  if (s === '待人工复核') return 'badge-warning';
+  return 'badge-default';
+}
+
+/* ---------- 页面分发 ---------- */
+function loadPage(pageKey) {
+  switch (pageKey) {
+    case 'dashboard': loadDashboard(); break;
+    case 'task-list': loadTaskList(); break;
+    case 'review-detail': loadReviewDetail(); break;
+    case 'rule-library': loadRules(); break;
+    case 'knowledge-base': loadKnowledge(); break;
+    case 'model-config': loadModelConfig(); break;
+    case 'eval-center': loadEvals(); break;
+  }
+}
+function openReview(id) { currentTaskId = id; navigateTo('review-detail'); }
+
+/* ---------- 工作台 ---------- */
+function drawTrend(trend) {
+  const svg = document.querySelector('#pageContent .chart-svg');
+  if (!svg) return;
+  const W = 540, base = 190, topY = 20, padX = 15;
+  const maxC = Math.max.apply(null, trend.map(function (t) { return t.count; }).concat([1]));
+  const n = trend.length;
+  const xs = trend.map(function (t, i) {
+    return padX + (n <= 1 ? (W - padX * 2) / 2 : i * (W - 2 * padX) / (n - 1));
+  });
+  const ys = trend.map(function (t) { return base - (t.count / maxC) * (base - topY); });
+  const solid = xs.map(function (x, i) { return x + ',' + ys[i]; }).join(' ');
+  const area = 'M' + xs[0] + ',' + base + ' L' + solid.replace(/ /g, ' L') + ' L' + xs[n - 1] + ',' + base + ' Z';
+  let circles = '';
+  xs.forEach(function (x, i) { circles += '<circle cx="' + x + '" cy="' + ys[i] + '" r="3" fill="#1677FF"/>'; });
+  svg.innerHTML =
+    '<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1677FF" stop-opacity=".20"/><stop offset="100%" stop-color="#1677FF" stop-opacity="0"/></linearGradient></defs>' +
+    '<line x1="0" y1="45" x2="540" y2="45" stroke="#F0F0F0"/><line x1="0" y1="95" x2="540" y2="95" stroke="#F0F0F0"/><line x1="0" y1="145" x2="540" y2="145" stroke="#F0F0F0"/><line x1="0" y1="190" x2="540" y2="190" stroke="#F0F0F0"/>' +
+    '<path d="' + area + '" fill="url(#areaGrad)"/>' +
+    '<polyline points="' + solid + '" fill="none" stroke="#1677FF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    circles;
+}
+async function loadDashboard() {
+  try {
+    const d = await api('/dashboard');
+    if (!d || !d.kpis) return;
+    const kv = document.querySelectorAll('#pageContent .kpi-value');
+    if (kv[0]) kv[0].textContent = d.kpis.total;
+    if (kv[1]) kv[1].textContent = d.kpis.avgConf + '%';
+    if (kv[2]) kv[2].textContent = (d.kpis.total ? Math.round(d.kpis.handoff / d.kpis.total * 100) : 0) + '%';
+    if (d.trend && d.trend.length) drawTrend(d.trend);
+    const dist = d.conclusionDist || {};
+    const tot = (dist.pass || 0) + (dist.reject || 0) + (dist.handoff || 0) || 1;
+    const lg = document.querySelectorAll('#pageContent .donut-legend .lg');
+    if (lg[0] && lg[0].querySelector('b')) lg[0].querySelector('b').textContent = Math.round((dist.pass || 0) / tot * 100) + '%';
+    if (lg[1] && lg[1].querySelector('b')) lg[1].querySelector('b').textContent = Math.round((dist.reject || 0) / tot * 100) + '%';
+    if (lg[2] && lg[2].querySelector('b')) lg[2].querySelector('b').textContent = Math.round((dist.handoff || 0) / tot * 100) + '%';
+    if (d.agentRates) {
+      const order = ['ocr','multimodal','entity','validate','rule'];
+      const rows = document.querySelectorAll('#pageContent .bar-row');
+      order.forEach(function (k, i) {
+        const r = d.agentRates.filter(function (a) { return a.key === k; })[0];
+        if (!r || !rows[i]) return;
+        const val = r.rate == null ? null : Math.round(r.rate);
+        const fill = rows[i].querySelector('.bar-fill');
+        const v = rows[i].querySelector('.bar-val');
+        if (val != null) { if (fill) fill.style.width = val + '%'; if (v) v.textContent = val + '%'; }
+      });
+    }
+    const tasks = await api('/tasks');
+    const pending = (tasks || []).filter(function (t) {
+      return t.review_status === '待人工复核' || t.review_status === '不通过';
+    }).slice(0, 5);
+    const cards = document.querySelectorAll('#pageContent .chart-card');
+    const top5 = cards[cards.length - 1];
+    if (top5) {
+      const tb = top5.querySelector('tbody');
+      if (tb) {
+        tb.innerHTML = '';
+        pending.forEach(function (t) {
+          const c = (t.confidence || 0);
+          const lvl = c < 50 ? '高' : (c < 80 ? '中' : '低');
+          const lvlCls = lvl === '高' ? 'badge-danger' : (lvl === '中' ? 'badge-warning' : 'badge-default');
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td><span class="badge ' + lvlCls + '"><i class="badge-dot"></i>' + lvl + '</span></td>' +
+            '<td>' + esc(t.filename) + '</td>' +
+            '<td>' + (lvl === '高' ? '高风险' : (lvl === '中' ? '中风险' : '低风险')) + '</td>' +
+            '<td>' + c + '%</td><td>—</td>' +
+            '<td><a class="link-action" onclick="openReview(\'' + t.task_no + '\')">复核</a></td>';
+          tb.appendChild(tr);
+        });
+      }
+    }
+  } catch (e) { console.warn('[联调] dashboard 加载失败（保留静态内容）：', e); }
+}
+
+/* ---------- 审核任务列表 ---------- */
+async function loadTaskList() {
+  try {
+    const tasks = await api('/tasks');
+    if (!tasks) return;
+    const details = await Promise.all(tasks.map(function (t) {
+      return api('/tasks/' + encodeURIComponent(t.task_no)).catch(function () { return null; });
+    }));
+    const tb = document.querySelector('#pageContent .ft-table tbody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    tasks.forEach(function (t, i) {
+      const det = details[i];
+      const cards = (det && det.result) ? det.result.cards : [];
+      const total = cards.length || '—';
+      const fail = cards.filter(function (c) { return c.status === 'fail'; }).length;
+      const pend = cards.filter(function (c) { return c.status === 'pend'; }).length;
+      const product = PRODUCT_MAP[t.task_no] || (t.material_type || '');
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="ft-col-id">' + esc(t.task_no) + '</td>' +
+        '<td class="ft-col-name">' + esc(t.filename) + '</td>' +
+        '<td>' + esc(t.task_type) + '</td>' +
+        '<td>' + esc(t.material_type) + '</td>' +
+        '<td class="ft-num">' + total + '</td>' +
+        '<td class="ft-num fail">' + (fail || 0) + '</td>' +
+        '<td class="ft-num pend">' + (pend || 0) + '</td>' +
+        '<td>' + esc(t.creator || '') + '</td>' +
+        '<td>设计组·王芳</td>' +
+        '<td>张明远</td>' +
+        '<td>王建国</td>' +
+        '<td>' + esc(product) + '</td>' +
+        '<td><span class="badge ' + statusBadge(t.review_status) + '"><i class="badge-dot"></i>' + esc(t.review_status) + '</span></td>' +
+        '<td class="ft-col-op">' +
+          '<a class="link-action" onclick="openReview(\'' + t.task_no + '\')">查看结果</a>' +
+          '<a class="link-action">下载结果</a>' +
+          '<a class="link-action">下载源文件</a>' +
+        '</td>';
+      tb.appendChild(tr);
+    });
+    const pg = document.querySelector('#pageContent .table-pagination span');
+    if (pg) pg.textContent = '共 ' + tasks.length + ' 条记录，第 1/1 页';
+  } catch (e) { console.warn('[联调] 任务列表加载失败（保留静态内容）：', e); }
+}
+
+/* ---------- 审核详情（核心） ---------- */
+function injectDecisionBar() {
+  if (document.getElementById('decisionBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'decisionBar';
+  bar.style.cssText = 'display:flex;gap:8px;align-items:center;margin-left:10px;flex-wrap:wrap;';
+  bar.innerHTML =
+    '<input id="decisionReason" class="form-input" style="height:30px;width:200px;" placeholder="复核意见（可选）">' +
+    '<button class="btn btn-primary-sm" onclick="doDecide(\'pass\')">通过</button>' +
+    '<button class="btn btn-primary-sm" style="background:#F5222D;border-color:#F5222D;color:#fff;" onclick="doDecide(\'reject\')">不通过</button>' +
+    '<button class="btn" onclick="doDecide(\'handoff\')">转人工</button>' +
+    '<button class="btn" onclick="rerunTask()">重新运行</button>';
+  const top = document.querySelector('#pageContent .review-topbar');
+  if (top) top.appendChild(bar);
+}
+async function loadReviewDetail() {
+  try {
+    const t = await api('/tasks/' + encodeURIComponent(currentTaskId || 'P000843'));
+    if (!t) return;
+    currentTaskId = t.task_no || currentTaskId;
+    const title = document.querySelector('#pageContent .review-title');
+    if (title) title.textContent = '审核详情 · ' + t.task_no;
+    const meta = document.querySelector('#pageContent .review-meta');
+    if (meta) meta.textContent = t.filename + ' · ' + t.task_type + ' · ' + t.material_type + ' · ' + (PRODUCT_MAP[t.task_no] || '') + ' · 创建人：' + (t.creator || '');
+    const st = document.querySelector('#pageContent .review-topbar .badge');
+    if (st) { st.className = 'badge ' + statusBadge(t.review_status); st.innerHTML = '<i class="badge-dot"></i>' + esc(t.review_status); }
+    const imgName = document.querySelector('#pageContent .image-filename');
+    if (imgName) imgName.textContent = t.filename;
+    const cards = (t.result && t.result.cards) || [];
+    const conf = (t.result && t.result.confidence != null) ? t.result.confidence : t.confidence;
+    const ov = document.querySelector('#pageContent .result-overview .op-val');
+    if (ov) ov.innerHTML = cards.length + '<span class="op-total">/' + cards.length + '</span>';
+    const ss = document.querySelectorAll('#pageContent .status-summary .ss-num');
+    if (ss[0]) ss[0].textContent = cards.filter(function (c) { return c.status === 'pass'; }).length;
+    if (ss[1]) ss[1].textContent = cards.filter(function (c) { return c.status === 'fail'; }).length;
+    if (ss[2]) ss[2].textContent = cards.filter(function (c) { return c.status === 'pend'; }).length;
+    const prog = document.querySelector('#pageContent .progress-fill');
+    if (prog) prog.style.width = '100%';
+    const confLines = document.querySelectorAll('#pageContent .md-content p');
+    for (let i = 0; i < confLines.length; i++) {
+      if (confLines[i].textContent.indexOf('当前文本整体置信度') >= 0) {
+        const s = confLines[i].querySelector('strong');
+        if (s) s.textContent = (conf || 0) + '%';
+        break;
+      }
+    }
+    injectDecisionBar();
+  } catch (e) { console.warn('[联调] 审核详情加载失败（保留静态内容）：', e); }
+}
+async function doDecide(action) {
+  const reason = (document.getElementById('decisionReason') || {}).value || '';
+  try {
+    const r = await api('/tasks/' + encodeURIComponent(currentTaskId) + '/decide', { method: 'POST', body: { action: action, reason: reason, reviewer: '王审核' } });
+    if (r && r.task) { alert('已提交决策：' + action + '，任务状态 → ' + r.task.review_status); loadReviewDetail(); }
+    else if (r && r.error) { alert('提交失败：' + r.error); }
+  } catch (e) { alert('提交失败：' + e.message); }
+}
+async function rerunTask() {
+  try {
+    const r = await api('/tasks/' + encodeURIComponent(currentTaskId) + '/rerun', { method: 'POST' });
+    if (r) { alert('已重新运行 7 智能体审核流水线'); loadReviewDetail(); }
+  } catch (e) { alert('重跑失败：' + e.message); }
+}
+
+/* ---------- 规则库 ---------- */
+async function loadRules() {
+  try {
+    const rules = await api('/rules');
+    if (!rules) return;
+    const tb = document.querySelector('#pageContent .data-table tbody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    rules.forEach(function (r, i) {
+      const on = r.status === '启用';
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-id', r.id);
+      tr.setAttribute('data-level1', r.level1);
+      tr.setAttribute('data-level2', r.level2 || '');
+      tr.setAttribute('data-detail', r.detail);
+      tr.setAttribute('data-material', r.material_type || '全部类型');
+      tr.setAttribute('data-status', on ? 'on' : 'off');
+      tr.innerHTML = '<td>' + (i + 1) + '</td><td>' + esc(r.level1) + '</td><td>' + esc(r.level2 || '') + '</td><td>' + esc(r.detail) + '</td><td>' + esc(r.material_type || '全部类型') + '</td>' +
+        '<td><span class="badge ' + (on ? 'badge-success' : 'badge-danger') + '">' + (on ? '启用' : '禁用') + '</span></td>' +
+        '<td><a class="link-action" onclick="openRuleEdit(this)">编辑</a><a class="link-action" onclick="toggleRuleStatus(this)">' + (on ? '禁用' : '启用') + '</a></td>';
+      tb.appendChild(tr);
+    });
+    const tree0 = document.querySelector('#pageContent .tree-node');
+    if (tree0) { const c = tree0.querySelector('.tree-count'); if (c) c.textContent = rules.length + ' 条'; }
+    const pg = document.querySelector('#pageContent .table-pagination span');
+    if (pg) pg.textContent = '共 ' + rules.length + ' 条（当前显示 ' + rules.length + ' 条）';
+  } catch (e) { console.warn('[联调] 规则库加载失败（保留静态内容）：', e); }
+}
+async function persistRule(tr, data) {
+  try {
+    if (tr && tr.getAttribute('data-id') && /^\d+$/.test(tr.getAttribute('data-id'))) {
+      await api('/rules/' + tr.getAttribute('data-id'), { method: 'PUT', body: data });
+    } else {
+      await api('/rules', { method: 'POST', body: data });
+    }
+    loadRules();
+  } catch (e) { console.warn('[联调] 规则保存失败：', e); }
+}
+
+/* ---------- 知识库 ---------- */
+async function loadKnowledge() {
+  try {
+    const ks = await api('/knowledge');
+    if (!ks) return;
+    const tb = document.querySelector('#pageContent .data-table tbody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    const typeLabel = { entity:'基金核心实体', rule:'营销合规规则', badcase:'高频错误案例', goodcase:'高频错误案例' };
+    ks.forEach(function (k) {
+      const stOn = k.status === '启用' || k.status === '已生效';
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + esc(k.title) + '</td>' +
+        '<td>' + esc(k.category || typeLabel[k.type] || k.type) + '</td>' +
+        '<td>' + esc(k.version || '') + '</td>' +
+        '<td>' + esc((k.created_at || '').slice(0, 10)) + '</td>' +
+        '<td><span class="badge ' + (stOn ? 'badge-success' : 'badge-default') + '">' + esc(k.status) + '</span></td>' +
+        '<td>' + esc(k.source || '') + '</td>' +
+        '<td><a class="link-action" onclick="event.stopPropagation();deleteKnowledge(' + k.id + ')">删除</a><a class="link-action">查看</a></td>';
+      tb.appendChild(tr);
+    });
+    const tree0 = document.querySelector('#pageContent .tree-node');
+    if (tree0) { const c = tree0.querySelector('.tree-count'); if (c) c.textContent = ks.length + ' 条'; }
+    const pg = document.querySelector('#pageContent .table-pagination span');
+    if (pg) pg.textContent = '共 ' + ks.length + ' 条';
+    const addBtn = document.querySelector('#pageContent .filter-actions .btn-primary-sm');
+    if (addBtn && !addBtn.getAttribute('data-wired')) {
+      addBtn.setAttribute('data-wired', '1');
+      addBtn.setAttribute('onclick', 'addKnowledge()');
+    }
+  } catch (e) { console.warn('[联调] 知识库加载失败（保留静态内容）：', e); }
+}
+async function deleteKnowledge(id) {
+  if (!confirm('确认删除该知识条目？')) return;
+  try { await api('/knowledge/' + id, { method: 'DELETE' }); loadKnowledge(); } catch (e) { alert('删除失败：' + e.message); }
+}
+async function addKnowledge() {
+  const title = prompt('知识条目名称：'); if (!title) return;
+  const content = prompt('内容：'); if (content == null) return;
+  const type = prompt('类型（entity/rule/badcase/goodcase）：', 'rule') || 'rule';
+  try {
+    await api('/knowledge', { method: 'POST', body: { type: type, category: '营销合规规则', title: title, content: content, source: '人工录入', version: 'V1', compliance_level: 'med', status: '启用' } });
+    loadKnowledge();
+  } catch (e) { alert('添加失败：' + e.message); }
+}
+
+/* ---------- 模型与阈值配置 ---------- */
+async function loadModelConfig() {
+  try {
+    const agents = await api('/config/agents');
+    const g = await api('/config/global');
+    if (agents) {
+      window._agentKeys = agents.map(function (a) { return a.key; });
+      const cards = document.querySelectorAll('#pageContent .agent-cfg');
+      agents.forEach(function (a, i) {
+        const card = cards[i]; if (!card) return;
+        const badge = card.querySelector('.badge');
+        const on = a.enabled === 1 || a.enabled === true;
+        if (badge) { badge.className = 'badge ' + (on ? 'badge-success' : 'badge-danger'); badge.textContent = on ? '启用' : '禁用'; }
+        const slider = card.querySelector('.slider');
+        const thr = card.querySelector('.thr-val');
+        const val = Math.round((a.threshold || 0.8) * 100);
+        if (slider) slider.value = val;
+        if (thr) thr.textContent = val + '%';
+        const sel = card.querySelector('select.form-input');
+        if (sel && a.model) {
+          for (let o = 0; o < sel.options.length; o++) {
+            const txt = sel.options[o].textContent.trim();
+            if (a.model.indexOf(txt) >= 0 || txt.indexOf(a.model.slice(0, 6)) >= 0) { sel.selectedIndex = o; break; }
+          }
+        }
+        if (slider) {
+          slider.oninput = function () { const f = slider.closest('.form-field'); const v = f && f.querySelector('.thr-val'); if (v) v.textContent = slider.value + '%'; };
+          slider.onchange = (function (key) { return async function () { try { await api('/config/agents/' + key, { method: 'PUT', body: { threshold: (+slider.value) / 100 } }); } catch (e) { console.warn('阈值保存失败', e); } }; })(a.key);
+        }
+      });
+    }
+    const secSliders = document.querySelectorAll('#pageContent .config-section .slider');
+    if (secSliders[0] && g && g.auto_handoff_below != null) {
+      secSliders[0].value = Math.round((+g.auto_handoff_below) * 100);
+      const sp = secSliders[0].parentElement.querySelector('span');
+      if (sp) sp.textContent = Math.round((+g.auto_handoff_below) * 100) + '%';
+      secSliders[0].onchange = async function () { try { await api('/config/global', { method: 'PUT', body: { auto_handoff_below: (+secSliders[0].value) / 100 } }); } catch (e) { console.warn('全局阈值保存失败', e); } };
+    }
+  } catch (e) { console.warn('[联调] 模型配置加载失败（保留静态内容）：', e); }
+}
+
+/* ---------- 评测中心 ---------- */
+async function loadEvals() {
+  try {
+    const evals = await api('/evals');
+    if (!evals) return;
+    const tb = document.querySelector('#pageContent .data-table tbody');
+    if (!tb) return;
+    tb.innerHTML = '';
+    evals.forEach(function (e) {
+      const using = e.kind === 'good';
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + esc(e.model) + '</td>' +
+        '<td><b>' + (e.accuracy != null ? e.accuracy + '%' : '') + '</b></td>' +
+        '<td>' + (e.latency || '') + 'ms</td>' +
+        '<td>' + esc(e.note || '') + '</td>' +
+        '<td><span class="badge ' + (using ? 'badge-success' : 'badge-default') + '">' + (using ? '使用中' : '可用') + '</span></td>';
+      tb.appendChild(tr);
+    });
+  } catch (e) { console.warn('[联调] 评测中心加载失败（保留静态内容）：', e); }
+}
+
+console.log('[联调] 前后端联调层已加载，数据来源：/api');
 </script>
 </body>
 </html>
