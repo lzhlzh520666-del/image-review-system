@@ -60,20 +60,25 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
 
   const mime = imageMime || 'image/jpeg';
 
-  // ① OCR 智能体（视觉类；若当前模型不支持看图则优雅回落，不连累整条流水线）
-  let ocrText = '';
-  try { ocrText = await llm.chatVision({ system: P.ocr_sys, user: P.ocr_user, imageBase64: b64, imageMime: mime, json: false }) || ''; }
-  catch (e) { ocrText = ''; }
+  // 统计「真实大模型调用成功次数」，用于如实标记 mock（避免欠费/未开通时误报已真跑）
+  let realOk = 0;
+  async function safeLLM(fn, fallback) {
+    try {
+      const v = await fn();
+      if (v == null) return fallback;
+      realOk++;
+      return v;
+    } catch (e) { return fallback; }
+  }
+
+  // ① OCR 智能体（视觉类；若当前模型不支持看图 / 欠费则优雅回落，不连累整条流水线）
+  let ocrText = await safeLLM(() => llm.chatVision({ system: P.ocr_sys, user: P.ocr_user, imageBase64: b64, imageMime: mime, json: false }), '');
 
   // ② 多模态解析智能体
-  let mm = {};
-  try { mm = await llm.chatVision({ system: P.mm_sys, user: P.mm_user, imageBase64: b64, imageMime: mime, json: true }) || {}; }
-  catch (e) { mm = {}; }
+  let mm = await safeLLM(() => llm.chatVision({ system: P.mm_sys, user: P.mm_user, imageBase64: b64, imageMime: mime, json: true }), {});
 
   // ③ 实体识别智能体
-  let ent = {};
-  try { ent = await llm.chatText({ system: P.entity_sys, user: P.entity_user(ocrText), json: true }) || {}; }
-  catch (e) { ent = {}; }
+  let ent = await safeLLM(() => llm.chatText({ system: P.entity_sys, user: P.entity_user(ocrText), json: true }), {});
 
   // ④ 数据校验智能体（本地规则引擎 + 知识库）
   const val = localValidate(ocrText, ent);
@@ -82,10 +87,10 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
   const rulesRows = all("SELECT * FROM rules WHERE status='启用'");
   const rulesText = rulesRows.map((r, i) => `${i + 1}. [${r.level1}/${r.level2}] ${r.detail}`).join('\n');
   let ruleFindings = [];
-  try {
-    const r = await llm.chatText({ system: P.rule_sys, user: P.rule_user(rulesText, ocrText), json: true }) || {};
+  {
+    const r = await safeLLM(() => llm.chatText({ system: P.rule_sys, user: P.rule_user(rulesText, ocrText), json: true }), {});
     ruleFindings = Array.isArray(r.findings) ? r.findings : [];
-  } catch (e) { ruleFindings = []; }
+  }
 
   // 合并违规证据：实体违规词 + 规则命中
   const guaranteeWords = Array.isArray(ent.guarantee_words) ? ent.guarantee_words : [];
@@ -98,10 +103,10 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
     ...violated.map((f) => `违规：${f.rule}${f.evidence ? '（' + f.evidence + '）' : ''}`),
     ...(Array.isArray(mm.risk_hints) ? mm.risk_hints.map((h) => `风险点：${h}`) : [])
   ];
-  try {
-    const loc = await llm.chatVision({ system: P.loc_sys, user: P.loc_user(hints.join('\n') || '整体复核'), imageBase64: b64, imageMime: mime, json: true }) || {};
+  {
+    const loc = await safeLLM(() => llm.chatVision({ system: P.loc_sys, user: P.loc_user(hints.join('\n') || '整体复核'), imageBase64: b64, imageMime: mime, json: true }), {});
     boxes = Array.isArray(loc.boxes) ? loc.boxes : [];
-  } catch (e) { boxes = []; }
+  }
   if (!boxes.length) {
     let bi = 0;
     hints.slice(0, 6).forEach((h) => { boxes.push(mkBox('box' + bi, bi + 1, randTop(bi), h.slice(0, 12), 'danger')); bi++; });
@@ -113,9 +118,7 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
     entities: ent, validation: val,
     rule_findings: ruleFindings, locate_boxes: boxes.length
   };
-  let dec = {};
-  try { dec = await llm.chatText({ system: P.decision_sys, user: P.decision_user(summary), json: true }) || {}; }
-  catch (e) { dec = {}; }
+  let dec = await safeLLM(() => llm.chatText({ system: P.decision_sys, user: P.decision_user(summary), json: true }), {});
 
   // 组装卡片（严格保留：文本校对 / 指标校对 / 合规规则 分组，跨组连续编号）
   const cards = [];
@@ -155,7 +158,7 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
     anno_boxes: boxes, cards, confidence, conclusion,
     ocr_text: ocrText, agent_outputs,
     review_status: conclusion, decision, handoff,
-    mock: false,
+    mock: realOk === 0,
     entities: ent, rule_findings: ruleFindings, validation: val
   };
 }
