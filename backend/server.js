@@ -7,6 +7,11 @@
 const http = require('http');
 const path = require('path');
 const { loadEnv } = require('./src/core/env');
+// ⚠️ 必须在 require('./src/routes') 之前加载 .env：
+// routes → llm.js 在「模块加载时」会把 process.env.LLM_* 固化进常量；
+// 若 loadEnv 晚于该 require，则模型名/Base 会被默认 qwen-max 锁死（典型症状：
+// 进程里 .env 已是 glm，但 /api/config/llm 仍返回 qwen-max）。
+loadEnv(path.join(__dirname, '.env'));
 const { initSchema, getDb } = require('./src/core/db');
 const { serveStatic } = require('./src/core/http');
 const Router = require('./src/core/router');
@@ -17,7 +22,6 @@ const ROOT = path.join(__dirname, '..'); // AI图片审核系统原型/（backen
 const PROTOTYPE = 'v1-review-prototype.html';
 const PORT = process.env.PORT || 3000;
 
-loadEnv();
 initSchema();
 seed();
 

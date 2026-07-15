@@ -60,8 +60,10 @@ async function runPipelineReal({ filename, imageBase64, imageMime, imagePath }) 
 
   const mime = imageMime || 'image/jpeg';
 
-  // ① OCR 智能体
-  const ocrText = await llm.chatVision({ system: P.ocr_sys, user: P.ocr_user, imageBase64: b64, imageMime: mime, json: false });
+  // ① OCR 智能体（视觉类；若当前模型不支持看图则优雅回落，不连累整条流水线）
+  let ocrText = '';
+  try { ocrText = await llm.chatVision({ system: P.ocr_sys, user: P.ocr_user, imageBase64: b64, imageMime: mime, json: false }) || ''; }
+  catch (e) { ocrText = ''; }
 
   // ② 多模态解析智能体
   let mm = {};
